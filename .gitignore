@@ -12,6 +12,7 @@
 
 # testing
 /coverage
+/.codex-qa/
 
 # next.js
 /.next/
@@ -19,6 +20,10 @@
 
 # production
 /build
+
+# local database
+/data/*.db
+/data/*.db-*
 
 # misc
 .DS_Store
@@ -32,6 +37,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -39,3 +45,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+/src/generated/prisma
+
+# local product references and retired scaffolding
+/_source_docs/
+/prisma/
+/prisma.config.ts
+/public/assets/
+/public/design/
+/public/prototypes/
+/public/reference-pages/
