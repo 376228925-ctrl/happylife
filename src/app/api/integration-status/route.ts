@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
-export function GET() {
+export function GET(request: Request) {
+  const auth = requireAuth(request);
+  if (!auth.ok) return auth.response;
+
   const hasDeepSeek = Boolean(process.env.DEEPSEEK_API_KEY?.trim());
   const deepSeekVisionModel = process.env.DEEPSEEK_VISION_MODEL?.trim();
   const openAiVisionModel = process.env.OPENAI_API_KEY?.trim()
@@ -47,10 +51,16 @@ export function GET() {
         detail: "SQLite 本地数据库已启用",
       },
       {
+        id: "account",
+        label: "账号登录体系",
+        status: "ready",
+        detail: "已支持用户名密码、手机号快捷登录与第三方 OAuth 配置入口",
+      },
+      {
         id: "cloud",
         label: "云同步与多端恢复",
         status: "pending",
-        detail: "等待账号体系和云数据库",
+        detail: "账号体系已接入，云数据库与多端同步待接入",
       },
     ],
   });

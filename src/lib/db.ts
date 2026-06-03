@@ -20,7 +20,7 @@ const dbPath = path.join(dbDir, "happylife.db");
 
 let client: Database.Database | null = null;
 
-function getDb() {
+export function getDb() {
   if (!fs.existsSync(dbDir)) {
     fs.mkdirSync(dbDir, { recursive: true });
   }
@@ -116,6 +116,69 @@ function initialize(db: Database.Database) {
       category TEXT NOT NULL,
       done INTEGER NOT NULL DEFAULT 0,
       sort_order INTEGER NOT NULL DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS auth_users (
+      id TEXT PRIMARY KEY,
+      display_name TEXT NOT NULL,
+      username TEXT UNIQUE,
+      phone TEXT UNIQUE,
+      password_hash TEXT,
+      avatar_url TEXT,
+      primary_provider TEXT NOT NULL DEFAULT 'password',
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      last_login_at TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS auth_sessions (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      token_hash TEXT NOT NULL UNIQUE,
+      expires_at TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      last_seen_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      user_agent TEXT,
+      ip TEXT,
+      FOREIGN KEY (user_id) REFERENCES auth_users(id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_auth_sessions_user_id ON auth_sessions(user_id);
+    CREATE INDEX IF NOT EXISTS idx_auth_sessions_expires_at ON auth_sessions(expires_at);
+
+    CREATE TABLE IF NOT EXISTS phone_login_codes (
+      id TEXT PRIMARY KEY,
+      phone TEXT NOT NULL,
+      code_hash TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      consumed_at TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      ip TEXT
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_phone_login_codes_phone ON phone_login_codes(phone);
+
+    CREATE TABLE IF NOT EXISTS oauth_states (
+      id TEXT PRIMARY KEY,
+      provider TEXT NOT NULL,
+      state TEXT NOT NULL UNIQUE,
+      redirect_to TEXT,
+      expires_at TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS oauth_accounts (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      provider TEXT NOT NULL,
+      provider_user_id TEXT NOT NULL,
+      union_id TEXT,
+      nickname TEXT,
+      avatar_url TEXT,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(provider, provider_user_id),
+      FOREIGN KEY (user_id) REFERENCES auth_users(id)
     );
   `);
 

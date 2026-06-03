@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth";
 import { addRecognizedMealRecord, getAppState } from "@/lib/db";
 
 export const runtime = "nodejs";
@@ -135,6 +136,9 @@ async function recognizeFood(dataUrl: string, hint?: string): Promise<VisionResu
 }
 
 export async function POST(request: Request) {
+  const auth = requireAuth(request);
+  if (!auth.ok) return auth.response;
+
   try {
     const formData = await request.formData();
     const file = formData.get("image");
@@ -172,4 +176,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Food recognition failed" }, { status: 500 });
   }
 }
-

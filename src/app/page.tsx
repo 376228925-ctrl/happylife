@@ -18,7 +18,10 @@ import {
   Droplets,
   Heart,
   Home,
+  KeyRound,
   Leaf,
+  LogOut,
+  MessageCircle,
   Moon,
   NotebookPen,
   Pause,
@@ -28,10 +31,11 @@ import {
   Send,
   ShieldCheck,
   Sparkles,
+  Smartphone,
   User,
   Volume2,
 } from "lucide-react";
-import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
+import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { clsx } from "clsx";
 import { useAppStore } from "@/store/appStore";
 import type { AppStatePayload, MemoryItem, Screen } from "@/types/app";
@@ -69,6 +73,15 @@ type Capability = {
   label: string;
   status: "ready" | "limited" | "pending";
   detail: string;
+};
+
+type AuthUser = {
+  id: string;
+  displayName: string;
+  username: string | null;
+  phone: string | null;
+  avatarUrl: string | null;
+  primaryProvider: string;
 };
 
 function parseReminderToNextDelay(reminderTime: string) {
@@ -208,13 +221,14 @@ async function speak(
 export default function Page() {
   const { screen, previousScreen, activeTab, mode, setMode, setScreen } = useAppStore();
   const [state, setState] = useState<AppStatePayload | null>(null);
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<string | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const toastTimerRef = useRef<number | null>(null);
   const reminderTimerRef = useRef<number | null>(null);
 
-  function showToast(message: string) {
+  const showToast = useCallback((message: string) => {
     setToast(message);
     if (toastTimerRef.current) {
       window.clearTimeout(toastTimerRef.current);
@@ -223,7 +237,7 @@ export default function Page() {
       setToast(null);
       toastTimerRef.current = null;
     }, 2200);
-  }
+  }, []);
 
   async function runAction(action: ActionName, payload?: Record<string, unknown>) {
     const response = await fetch("/api/actions", {
@@ -243,22 +257,67 @@ export default function Page() {
     return result;
   }
 
+  const loadAppState = useCallback(async (nextAuthUser?: AuthUser) => {
+    const response = await fetch("/api/app-state", { cache: "no-store" });
+    if (response.status === 401) {
+      setAuthUser(null);
+      setState(null);
+      setLoading(false);
+      return;
+    }
+    const payload = (await response.json()) as AppStatePayload;
+    setState(payload);
+    if (nextAuthUser) {
+      setAuthUser(nextAuthUser);
+    }
+    setMode(payload.user.currentMode);
+    setLoading(false);
+  }, [setMode]);
+
+  async function finishAuth(user: AuthUser) {
+    setLoading(true);
+    await loadAppState(user);
+    showToast("欢迎回来，小悦已经准备好了");
+  }
+
+  async function logout() {
+    await fetch("/api/auth/logout", { method: "POST" }).catch(() => undefined);
+    stopVoice();
+    setAuthUser(null);
+    setState(null);
+    setScreen("home", "home");
+    showToast("已退出登录");
+  }
+
   useEffect(() => {
     let alive = true;
     async function load() {
-      const response = await fetch("/api/app-state", { cache: "no-store" });
-      const payload = (await response.json()) as AppStatePayload;
-      if (alive) {
-        setState(payload);
-        setMode(payload.user.currentMode);
-        setLoading(false);
+      const params = new URLSearchParams(window.location.search);
+      const authError = params.get("auth_error");
+      if (authError) {
+        showToast(authError);
+        window.history.replaceState({}, "", window.location.pathname);
       }
+
+      const authResponse = await fetch("/api/auth/me", { cache: "no-store" }).catch(() => null);
+      if (!authResponse?.ok) {
+        if (alive) setLoading(false);
+        return;
+      }
+      const authPayload = (await authResponse.json()) as { authenticated?: boolean; user?: AuthUser | null };
+      if (!alive) return;
+      if (!authPayload.authenticated || !authPayload.user) {
+        setLoading(false);
+        return;
+      }
+      setAuthUser(authPayload.user);
+      await loadAppState(authPayload.user);
     }
     void load();
     return () => {
       alive = false;
     };
-  }, [setMode]);
+  }, [loadAppState, setScreen, showToast]);
 
   useEffect(() => {
     return () => {
@@ -332,9 +391,9 @@ export default function Page() {
         reminderTimerRef.current = null;
       }
     };
-  }, [state?.settings.remindersEnabled, state?.settings.reminderTime]);
+  }, [showToast, state?.settings.remindersEnabled, state?.settings.reminderTime]);
 
-  if (loading || !state) {
+  if (loading) {
     return (
       <main className={clsx("app-frame", mode === "day" ? "theme-day" : "theme-night")}>
         <NightBackdrop mode={mode} />
@@ -344,6 +403,38 @@ export default function Page() {
             animate={{ scale: [1, 1.1, 1], opacity: [0.7, 1, 0.7] }}
             transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
           />
+        </div>
+      </main>
+    );
+  }
+
+  if (!authUser || !state) {
+    return (
+      <main className={clsx("app-frame", mode === "day" ? "theme-day" : "theme-night")}>
+        <NightBackdrop mode={mode} />
+        <div
+          className={clsx(
+            "relative mx-auto flex h-[100dvh] w-full max-w-[430px] flex-col overflow-hidden text-white",
+            "md:my-4 md:h-[calc(100dvh-2rem)] md:rounded-[38px] md:border md:border-white/12 md:shadow-2xl",
+            mode === "day" ? "md:bg-[#2b3f9a]/55" : "md:bg-[#0d1648]/75",
+          )}
+        >
+          <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-4 pb-[calc(26px+env(safe-area-inset-bottom))] pt-[max(16px,env(safe-area-inset-top))]">
+            <AuthScreen onAuthenticated={finishAuth} onNotice={showToast} />
+          </div>
+          <AnimatePresence>
+            {toast && (
+              <motion.div
+                key={toast}
+                initial={{ opacity: 0, y: 18 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 16 }}
+                className="pointer-events-none absolute inset-x-4 bottom-[24px] z-40 rounded-[14px] border border-white/20 bg-[#1e2a6f]/95 px-4 py-2.5 text-center text-[13px] text-white shadow-[0_18px_35px_rgba(6,10,38,.45)]"
+              >
+                {toast}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </main>
     );
@@ -460,7 +551,7 @@ export default function Page() {
                   onAction={runAction}
                 />
               )}
-              {screen === "my" && <MyScreen state={state} onState={setState} onAction={runAction} onNotice={showToast} onNavigate={setScreen} />}
+              {screen === "my" && <MyScreen state={state} authUser={authUser} onState={setState} onAction={runAction} onNotice={showToast} onNavigate={setScreen} onLogout={logout} />}
               {screen === "reminder-settings" && (
                 <ReminderSettingsScreen
                   state={state}
@@ -582,6 +673,289 @@ export default function Page() {
         </AnimatePresence>
       </div>
     </main>
+  );
+}
+
+function AuthScreen({
+  onAuthenticated,
+  onNotice,
+}: {
+  onAuthenticated: (user: AuthUser) => Promise<void>;
+  onNotice: (message: string) => void;
+}) {
+  const [mode, setMode] = useState<"login" | "register" | "phone">("login");
+  const [identifier, setIdentifier] = useState("");
+  const [username, setUsername] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
+  const [code, setCode] = useState("");
+  const [previewCode, setPreviewCode] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  async function submitJson(url: string, body: Record<string, unknown>) {
+    setSubmitting(true);
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const payload = (await response.json().catch(() => ({}))) as { user?: AuthUser; error?: string; message?: string; previewCode?: string };
+      if (!response.ok || !payload.user) {
+        onNotice(payload.error || payload.message || "登录失败，请检查信息");
+        return null;
+      }
+      await onAuthenticated(payload.user);
+      return payload.user;
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function sendPhoneCode() {
+    if (!phone.trim()) {
+      onNotice("请先填写手机号");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const response = await fetch("/api/auth/phone-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as { error?: string; message?: string; previewCode?: string; delivery?: string };
+      if (!response.ok) {
+        onNotice(payload.error || "验证码发送失败");
+        return;
+      }
+      setPreviewCode(payload.previewCode ?? null);
+      onNotice(payload.delivery === "sms" ? "验证码已发送到手机" : `预览验证码：${payload.previewCode}`);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function startOAuth(provider: "wechat" | "douyin") {
+    const response = await fetch(`/api/auth/oauth/${provider}/start`, { cache: "no-store" });
+    const payload = (await response.json().catch(() => ({}))) as { url?: string; message?: string; error?: string };
+    if (!response.ok || !payload.url) {
+      onNotice(payload.message || payload.error || "第三方登录暂未配置");
+      return;
+    }
+    window.location.href = payload.url;
+  }
+
+  return (
+    <div className="space-y-4 py-2">
+      <section className="hero-card min-h-[286px]">
+        <Image
+          src="/image2/companion-hero.png"
+          alt="小悦登录欢迎"
+          width={432}
+          height={320}
+          className="pointer-events-none absolute inset-0 h-full w-full object-cover object-right"
+          priority
+        />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,18,61,.48)_0%,rgba(10,18,61,.28)_58%,rgba(10,18,61,.18)_100%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(90%_90%_at_16%_26%,rgba(10,18,61,.72)_0%,rgba(10,18,61,.42)_48%,rgba(10,18,61,0)_100%)]" />
+        <div className="relative z-10 max-w-[62%] p-1">
+          <span className="inline-flex rounded-full border border-white/20 bg-white/12 px-3 py-1 text-[12px] text-white/82">
+            幸福人生账号
+          </span>
+          <h1 className="mt-3 text-[27px] font-semibold leading-tight">欢迎回来，宝贝⭐</h1>
+          <p className="mt-2 text-[14px] leading-6 text-white/86">登录后，小悦会继续记住你的陪伴、健康和时光。</p>
+        </div>
+      </section>
+
+      <GlassCard className="p-3">
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            ["login", "密码登录"],
+            ["phone", "手机快捷"],
+            ["register", "注册账号"],
+          ].map(([key, label]) => (
+            <button
+              key={key}
+              className={clsx(
+                "rounded-full px-2 py-2 text-[13px] transition",
+                mode === key ? "bg-[#a78cff] font-semibold text-white shadow-[0_0_18px_rgba(170,140,255,.45)]" : "bg-white/8 text-white/70",
+              )}
+              onClick={() => setMode(key as "login" | "register" | "phone")}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </GlassCard>
+
+      <GlassCard className="space-y-3 p-4">
+        {mode === "login" && (
+          <>
+            <AuthField
+              icon={<User className="h-4 w-4" />}
+              label="用户名 / 手机号"
+              value={identifier}
+              onChange={setIdentifier}
+              placeholder="例如 haojie 或 13800000000"
+            />
+            <AuthField
+              icon={<KeyRound className="h-4 w-4" />}
+              label="密码"
+              value={password}
+              onChange={setPassword}
+              placeholder="请输入密码"
+              type="password"
+            />
+            <button
+              className="primary-btn w-full justify-center"
+              disabled={submitting}
+              onClick={() => void submitJson("/api/auth/login", { identifier, password })}
+            >
+              {submitting ? "登录中…" : "登录幸福人生"}
+            </button>
+          </>
+        )}
+
+        {mode === "register" && (
+          <>
+            <AuthField
+              icon={<User className="h-4 w-4" />}
+              label="昵称"
+              value={displayName}
+              onChange={setDisplayName}
+              placeholder="小悦该怎么称呼你"
+            />
+            <AuthField
+              icon={<ShieldCheck className="h-4 w-4" />}
+              label="用户名"
+              value={username}
+              onChange={setUsername}
+              placeholder="3-32 位英文、数字、点或下划线"
+            />
+            <AuthField
+              icon={<KeyRound className="h-4 w-4" />}
+              label="密码"
+              value={password}
+              onChange={setPassword}
+              placeholder="至少 8 位"
+              type="password"
+            />
+            <AuthField
+              icon={<Smartphone className="h-4 w-4" />}
+              label="手机号（可选）"
+              value={phone}
+              onChange={setPhone}
+              placeholder="用于之后快捷登录"
+              inputMode="tel"
+            />
+            <button
+              className="primary-btn w-full justify-center"
+              disabled={submitting}
+              onClick={() => void submitJson("/api/auth/register", { username, displayName, password, phone })}
+            >
+              {submitting ? "创建中…" : "创建账号并进入"}
+            </button>
+          </>
+        )}
+
+        {mode === "phone" && (
+          <>
+            <AuthField
+              icon={<Smartphone className="h-4 w-4" />}
+              label="手机号"
+              value={phone}
+              onChange={setPhone}
+              placeholder="请输入手机号"
+              inputMode="tel"
+            />
+            <div className="grid grid-cols-[1fr_auto] gap-2">
+              <AuthField
+                icon={<MessageCircle className="h-4 w-4" />}
+                label="验证码"
+                value={code}
+                onChange={setCode}
+                placeholder="6 位验证码"
+                inputMode="numeric"
+              />
+              <button className="ghost-btn self-end px-4" disabled={submitting} onClick={() => void sendPhoneCode()}>
+                获取验证码
+              </button>
+            </div>
+            {previewCode && (
+              <p className="rounded-[12px] border border-amber-200/25 bg-amber-200/12 px-3 py-2 text-[12px] text-amber-100">
+                当前未配置短信供应商，预览验证码：{previewCode}
+              </p>
+            )}
+            <button
+              className="primary-btn w-full justify-center"
+              disabled={submitting}
+              onClick={() => void submitJson("/api/auth/phone-login", { phone, code })}
+            >
+              {submitting ? "登录中…" : "手机号快捷登录"}
+            </button>
+          </>
+        )}
+      </GlassCard>
+
+      <GlassCard className="p-4">
+        <p className="text-[16px] font-semibold">也可以用第三方账号继续</p>
+        <p className="mt-1 text-[12px] leading-5 text-white/62">需要在开放平台配置 AppId、Secret 与回调地址后启用。</p>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <button className="ghost-btn h-11" onClick={() => void startOAuth("wechat")}>
+            微信登录
+          </button>
+          <button className="ghost-btn h-11" onClick={() => void startOAuth("douyin")}>
+            抖音登录
+          </button>
+        </div>
+      </GlassCard>
+
+      <GlassCard className="p-4">
+        <div className="flex gap-3">
+          <ShieldCheck className="h-5 w-5 shrink-0 text-emerald-300" />
+          <p className="text-[13px] leading-6 text-white/72">
+            密码会使用服务端哈希保存；登录会话写入 HttpOnly Cookie，前端脚本无法读取。你的陪伴数据仍保存在当前服务器数据库中。
+          </p>
+        </div>
+      </GlassCard>
+    </div>
+  );
+}
+
+function AuthField({
+  icon,
+  label,
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+  inputMode,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  type?: string;
+  inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 flex items-center gap-1.5 text-[12px] text-white/68">
+        {icon}
+        {label}
+      </span>
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        type={type}
+        inputMode={inputMode}
+        className="w-full rounded-[15px] border border-white/16 bg-white/9 px-3 py-3 text-[14px] text-white outline-none placeholder:text-white/38"
+      />
+    </label>
   );
 }
 
@@ -2266,16 +2640,20 @@ function GeneralSettingsScreen({
 
 function MyScreen({
   state,
+  authUser,
   onState,
   onAction,
   onNotice,
   onNavigate,
+  onLogout,
 }: {
   state: AppStatePayload;
+  authUser: AuthUser;
   onState: (state: AppStatePayload) => void;
   onAction: (action: ActionName, payload?: Record<string, unknown>) => Promise<ActionResponse | null>;
   onNotice: (message: string) => void;
   onNavigate: (screen: Screen, tab?: Tab) => void;
+  onLogout: () => Promise<void>;
 }) {
   const { mode, setMode } = useAppStore();
   const [switching, setSwitching] = useState(false);
@@ -2403,6 +2781,30 @@ function MyScreen({
             )}
           </div>
           <span className="grid h-12 w-12 place-items-center rounded-full bg-white/14 text-[24px]">⭐</span>
+        </div>
+      </GlassCard>
+
+      <GlassCard className="px-4 py-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-[13px] text-white/62">当前登录账号</p>
+            <p className="mt-1 truncate text-[17px] font-semibold">
+              {authUser.username || authUser.phone || authUser.displayName}
+            </p>
+            <p className="mt-1 text-[12px] text-white/62">
+              {authUser.primaryProvider === "phone"
+                ? "手机快捷登录"
+                : authUser.primaryProvider === "wechat"
+                  ? "微信登录"
+                  : authUser.primaryProvider === "douyin"
+                    ? "抖音登录"
+                    : "用户名密码登录"}
+            </p>
+          </div>
+          <button className="ghost-btn shrink-0 px-4" onClick={() => void onLogout()}>
+            <LogOut className="h-4 w-4" />
+            退出
+          </button>
         </div>
       </GlassCard>
 

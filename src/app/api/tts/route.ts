@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
@@ -10,6 +11,9 @@ type DoubaoTtsResponse = {
 };
 
 export async function POST(request: Request) {
+  const auth = requireAuth(request);
+  if (!auth.ok) return auth.response;
+
   const { text } = (await request.json().catch(() => ({}))) as { text?: string };
   const content = text?.replace(/\s+/g, " ").trim();
   if (!content) {

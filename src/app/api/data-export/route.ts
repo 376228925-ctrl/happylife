@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth";
 import { getAppState } from "@/lib/db";
 
 export const runtime = "nodejs";
 
-export function GET() {
+export function GET(request: Request) {
+  const auth = requireAuth(request);
+  if (!auth.ok) return auth.response;
+
   const exportedAt = new Date().toISOString();
   const payload = {
     app: "幸福人生",

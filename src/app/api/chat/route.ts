@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth";
 import { addChatMessage, getAppState } from "@/lib/db";
 
 export const runtime = "nodejs";
@@ -15,6 +16,9 @@ const systemPrompt = `
 `;
 
 export async function POST(request: Request) {
+  const auth = requireAuth(request);
+  if (!auth.ok) return auth.response;
+
   const { message } = (await request.json()) as { message?: string };
   const text = message?.trim();
 

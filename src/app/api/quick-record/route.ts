@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth";
 import { addMemory, applyQuickRecordImpact, classifyQuickRecord, getAppState } from "@/lib/db";
 
 export const runtime = "nodejs";
@@ -14,6 +15,9 @@ const categoryToType: Record<string, string> = {
 };
 
 export async function POST(request: Request) {
+  const auth = requireAuth(request);
+  if (!auth.ok) return auth.response;
+
   const { text, category } = (await request.json()) as {
     text?: string;
     category?: string;

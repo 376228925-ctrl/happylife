@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth";
 import {
   getAppState,
   updateUserMode,
@@ -10,6 +11,9 @@ import type { UserProfile } from "@/types/app";
 export const runtime = "nodejs";
 
 export async function PATCH(request: Request) {
+  const auth = requireAuth(request);
+  if (!auth.ok) return auth.response;
+
   const { mode, name, remindersEnabled, reminderTime, dataSynced, voiceCompanionEnabled, voiceTone } =
     (await request.json()) as {
     mode?: UserProfile["currentMode"];

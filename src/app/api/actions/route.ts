@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth";
 import {
   addChatMessage,
   addMemory,
@@ -78,6 +79,9 @@ function actionError(message: string, status = 400) {
 }
 
 export async function POST(request: Request) {
+  const auth = requireAuth(request);
+  if (!auth.ok) return auth.response;
+
   const body = (await request.json().catch(() => ({}))) as {
     action?: ActionType;
     payload?: Record<string, unknown>;
