@@ -1045,7 +1045,7 @@ function CompanionScreen({
       });
       const payload = (await response.json()) as {
         state?: AppStatePayload;
-        message?: { id: string; content: string };
+        message?: { id: string; content: string } | string;
         error?: string;
         provider?: string;
         model?: string;
@@ -1053,14 +1053,21 @@ function CompanionScreen({
       };
       if (!response.ok || !payload.state) {
         setConnectionTag("DeepSeek 连接失败");
-        onNotice(payload.message || payload.error || "AI 连接失败，请稍后再试");
+        onNotice(
+          (typeof payload.message === "string" ? payload.message : undefined) ||
+            payload.error ||
+            "AI 连接失败，请稍后再试",
+        );
         return false;
       }
       setConnectionTag(payload.provider && payload.model ? `${payload.provider} · ${payload.model}` : "DeepSeek 已连接");
       onState(payload.state);
       if (state.settings.voiceCompanionEnabled) {
         const replyText = payload.reply?.trim() || payload.state.chat[payload.state.chat.length - 1]?.content || "";
-        const replyId = payload.message?.id || payload.state.chat[payload.state.chat.length - 1]?.id || "";
+        const replyId =
+          (typeof payload.message === "object" ? payload.message.id : undefined) ||
+          payload.state.chat[payload.state.chat.length - 1]?.id ||
+          "";
         void speak(replyText, state.settings.voiceTone, (active) => setSpeakingMessageId(active ? replyId : null));
       }
       return true;
