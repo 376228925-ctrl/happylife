@@ -6,7 +6,7 @@ import {
   updateUserName,
   updateUserSettings,
 } from "@/lib/db";
-import type { UserProfile } from "@/types/app";
+import type { CompanionAvatar, ThemeMode } from "@/types/app";
 
 export const runtime = "nodejs";
 
@@ -14,19 +14,26 @@ export async function PATCH(request: Request) {
   const auth = requireAuth(request);
   if (!auth.ok) return auth.response;
 
-  const { mode, name, remindersEnabled, reminderTime, dataSynced, voiceCompanionEnabled, voiceTone } =
+  const { mode, name, remindersEnabled, reminderTime, dataSynced, voiceCompanionEnabled, voiceTone, companionAvatar } =
     (await request.json()) as {
-    mode?: UserProfile["currentMode"];
+    mode?: ThemeMode;
     name?: string;
     remindersEnabled?: boolean;
     reminderTime?: string;
     dataSynced?: boolean;
     voiceCompanionEnabled?: boolean;
     voiceTone?: "youth_girl" | "soft_girl" | "warm_neutral";
+    companionAvatar?: CompanionAvatar;
   };
 
-  if (mode !== undefined && mode !== "day" && mode !== "night") {
+  const supportedModes: ThemeMode[] = ["night", "sunrise", "blossom"];
+  if (mode !== undefined && !supportedModes.includes(mode)) {
     return NextResponse.json({ error: "Invalid mode" }, { status: 400 });
+  }
+
+  const supportedAvatars: CompanionAvatar[] = ["star", "moon", "flower"];
+  if (companionAvatar !== undefined && !supportedAvatars.includes(companionAvatar)) {
+    return NextResponse.json({ error: "Invalid companion avatar" }, { status: 400 });
   }
 
   if (mode) {
@@ -43,6 +50,7 @@ export async function PATCH(request: Request) {
     dataSynced,
     voiceCompanionEnabled,
     voiceTone,
+    companionAvatar,
   });
 
   return NextResponse.json({ state: getAppState() });

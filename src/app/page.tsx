@@ -38,7 +38,7 @@ import {
 import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { clsx } from "clsx";
 import { useAppStore } from "@/store/appStore";
-import type { AppStatePayload, MemoryItem, Screen } from "@/types/app";
+import type { AppStatePayload, CompanionAvatar, MemoryItem, Screen, ThemeMode } from "@/types/app";
 
 type Tab = "home" | "companion" | "plus" | "memories" | "my";
 
@@ -395,7 +395,7 @@ export default function Page() {
 
   if (loading) {
     return (
-      <main className={clsx("app-frame", mode === "day" ? "theme-day" : "theme-night")}>
+      <main className={clsx("app-frame", `theme-${mode}`)}>
         <NightBackdrop mode={mode} />
         <div className="flex min-h-screen items-center justify-center">
           <motion.div
@@ -410,13 +410,12 @@ export default function Page() {
 
   if (!authUser || !state) {
     return (
-      <main className={clsx("app-frame", mode === "day" ? "theme-day" : "theme-night")}>
+      <main className={clsx("app-frame", `theme-${mode}`)}>
         <NightBackdrop mode={mode} />
         <div
           className={clsx(
-            "relative mx-auto flex h-[100dvh] w-full max-w-[430px] flex-col overflow-hidden text-white",
+            "phone-shell relative mx-auto flex h-[100dvh] w-full max-w-[430px] flex-col overflow-hidden text-white",
             "md:my-4 md:h-[calc(100dvh-2rem)] md:rounded-[38px] md:border md:border-white/12 md:shadow-2xl",
-            mode === "day" ? "md:bg-[#2b3f9a]/55" : "md:bg-[#0d1648]/75",
           )}
         >
           <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-4 pb-[calc(26px+env(safe-area-inset-bottom))] pt-[max(16px,env(safe-area-inset-top))]">
@@ -441,13 +440,12 @@ export default function Page() {
   }
 
   return (
-    <main className={clsx("app-frame", mode === "day" ? "theme-day" : "theme-night")}>
+    <main className={clsx("app-frame", `theme-${mode}`)}>
       <NightBackdrop mode={mode} />
       <div
         className={clsx(
-          "relative mx-auto flex h-[100dvh] w-full max-w-[430px] flex-col overflow-hidden text-white",
+          "phone-shell relative mx-auto flex h-[100dvh] w-full max-w-[430px] flex-col overflow-hidden text-white",
           "md:my-4 md:h-[calc(100dvh-2rem)] md:rounded-[38px] md:border md:border-white/12 md:shadow-2xl",
-          mode === "day" ? "md:bg-[#2b3f9a]/55" : "md:bg-[#0d1648]/75",
         )}
       >
         <div
@@ -562,6 +560,22 @@ export default function Page() {
               )}
               {screen === "voice-settings" && (
                 <VoiceSettingsScreen
+                  state={state}
+                  onState={setState}
+                  onBack={() => setScreen("my", "my")}
+                  onNotice={showToast}
+                />
+              )}
+              {screen === "theme-settings" && (
+                <ThemeSettingsScreen
+                  state={state}
+                  onState={setState}
+                  onBack={() => setScreen("my", "my")}
+                  onNotice={showToast}
+                />
+              )}
+              {screen === "companion-avatar-settings" && (
+                <CompanionAvatarSettingsScreen
                   state={state}
                   onState={setState}
                   onBack={() => setScreen("my", "my")}
@@ -967,12 +981,18 @@ function HomeScreen({
 }: {
   state: AppStatePayload;
   onNavigate: (screen: Screen, tab?: Tab) => void;
-  mode: "day" | "night";
+  mode: ThemeMode;
   onAction: (action: ActionName, payload?: Record<string, unknown>) => Promise<ActionResponse | null>;
 }) {
   const primarySuggestion = state.suggestions.find((item) => item.isPrimary) ?? state.suggestions[0];
-  const greeting = mode === "night" ? "晚安,宝贝🌙" : "你好,宝贝☀️";
-  const greetingDesc = mode === "night" ? "辛苦啦，今晚先慢下来，小悦在这里陪你✨" : "新的一天慢慢来，小悦会陪你把节奏照顾好✨";
+  const greeting =
+    mode === "night" ? "晚安,宝贝🌙" : mode === "sunrise" ? "你好,宝贝☀️" : "今天也被爱包围🌸";
+  const greetingDesc =
+    mode === "night"
+      ? "辛苦啦，今晚先慢下来，小悦在这里陪你✨"
+      : mode === "sunrise"
+        ? "新的一天慢慢来，小悦会陪你把节奏照顾好✨"
+        : "把生活调成柔软的粉色，小悦陪你慢慢呼吸✨";
   return (
     <div className="space-y-3 pb-2">
       <div className="flex items-center justify-between px-1">
@@ -1018,7 +1038,7 @@ function HomeScreen({
         </div>
       </GlassCard>
 
-      <GlassCard className="relative overflow-hidden px-4 py-4">
+      <GlassCard className="media-card relative overflow-hidden px-4 py-4">
         <Image
           src="/image2/home-ai-relax.png"
           alt="放松小悦"
@@ -1608,8 +1628,8 @@ function CompanionScreen({
               className={clsx("flex items-end gap-2", message.role === "user" ? "justify-end" : "justify-start")}
             >
               {message.role !== "user" && (
-                <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full border border-white/25">
-                  <Image src="/image2/reco-voice-1.png" alt="小悦头像" fill sizes="32px" className="object-cover" />
+                <div className="relative grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full border border-white/25 bg-white/10">
+                  <AnimatedXiaoyue variant={state.settings.companionAvatar} size="xs" talking={speakingMessageId === message.id} />
                   {speakingMessageId === message.id && (
                     <span className="absolute -right-0.5 -bottom-0.5 h-2.5 w-2.5 rounded-full bg-emerald-300 ring-2 ring-[#1f2b74]" />
                   )}
@@ -1638,8 +1658,8 @@ function CompanionScreen({
           ))}
           {thinking && (
             <div className="flex items-end gap-2">
-              <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full border border-white/25">
-                <Image src="/image2/reco-voice-1.png" alt="小悦头像" fill sizes="32px" className="object-cover" />
+              <div className="relative grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full border border-white/25 bg-white/10">
+                <AnimatedXiaoyue variant={state.settings.companionAvatar} size="xs" talking />
               </div>
               <div className="max-w-[76%] rounded-[18px] bg-white/12 px-4 py-2.5">
                 <p className="mb-1 text-[11px] text-white/65">小悦正在回答...</p>
@@ -2447,8 +2467,8 @@ function ProfileSettingsScreen({
       <SubHeader title="个人信息" source="来自我的 · 个人信息" onBack={onBack} />
       <GlassCard className="p-4">
         <div className="flex items-center gap-3">
-          <div className="relative h-20 w-20 overflow-hidden rounded-[20px] border border-white/20">
-            <Image src="/image2/reco-voice-1.png" alt="个人头像" fill sizes="80px" className="object-cover" />
+          <div className="grid h-20 w-20 place-items-center overflow-hidden rounded-[20px] border border-white/20 bg-white/10">
+            <AnimatedXiaoyue variant={state.settings.companionAvatar} size="md" talking />
           </div>
           <div>
             <p className="text-[18px] font-semibold">{state.user.name}</p>
@@ -2655,10 +2675,16 @@ function MyScreen({
   onNavigate: (screen: Screen, tab?: Tab) => void;
   onLogout: () => Promise<void>;
 }) {
-  const { mode, setMode } = useAppStore();
-  const [switching, setSwitching] = useState(false);
+  const { mode } = useAppStore();
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState(state.user.name);
+  const themeLabel = mode === "night" ? "星夜紫" : mode === "sunrise" ? "暖橙白昼" : "粉樱治愈";
+  const avatarLabel =
+    state.settings.companionAvatar === "star"
+      ? "星星绒绒"
+      : state.settings.companionAvatar === "moon"
+        ? "月光团团"
+        : "花苞小悦";
   const toneLabel =
     state.settings.voiceTone === "youth_girl"
       ? "青春少女音"
@@ -2678,9 +2704,15 @@ function MyScreen({
     },
     {
       key: "mode",
-      title: "Day / Night 模式设置",
-      subtitle: "选择你喜欢的界面模式",
-      status: mode === "night" ? "夜间模式" : "日间模式",
+      title: "主题模式设置",
+      subtitle: "星夜紫、暖橙白昼、粉樱治愈三种模式",
+      status: themeLabel,
+    },
+    {
+      key: "avatar",
+      title: "小悦形象设置",
+      subtitle: "选择可爱、治愈、会呼吸的小悦形象",
+      status: avatarLabel,
     },
     {
       key: "voice",
@@ -2690,28 +2722,6 @@ function MyScreen({
     },
     { key: "settings", title: "设置", subtitle: "管理产品偏好、数据与隐私说明", status: "" },
   ] as const;
-
-  async function toggleMode() {
-    if (switching) return;
-    setSwitching(true);
-    const nextMode = mode === "night" ? "day" : "night";
-    try {
-      const response = await fetch("/api/user-settings", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode: nextMode }),
-      });
-      const payload = (await response.json()) as { state?: AppStatePayload; error?: string };
-      if (!response.ok || !payload.state) {
-        onNotice(payload.error || "模式切换失败");
-        return;
-      }
-      setMode(nextMode);
-      onState(payload.state);
-    } finally {
-      setSwitching(false);
-    }
-  }
 
   async function saveProfileName() {
     const next = nameDraft.trim();
@@ -2748,8 +2758,8 @@ function MyScreen({
 
       <GlassCard className="px-4 py-4">
         <div className="flex items-center gap-3">
-          <div className="h-16 w-16 overflow-hidden rounded-[18px] border border-white/20">
-            <Image src="/image2/reco-voice-1.png" alt="头像" width={460} height={280} className="h-full w-full object-cover object-center" />
+          <div className="grid h-16 w-16 place-items-center overflow-hidden rounded-[18px] border border-white/20 bg-white/10">
+            <AnimatedXiaoyue variant={state.settings.companionAvatar} size="sm" talking />
           </div>
           <div className="min-w-0 flex-1">
             {editingName ? (
@@ -2842,7 +2852,11 @@ function MyScreen({
               return;
             }
             if (item.key === "mode") {
-              void toggleMode();
+              onNavigate("theme-settings", "my");
+              return;
+            }
+            if (item.key === "avatar") {
+              onNavigate("companion-avatar-settings", "my");
               return;
             }
             if (item.key === "voice") {
@@ -2857,7 +2871,21 @@ function MyScreen({
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <span className="grid h-11 w-11 place-items-center rounded-full bg-white/14 text-[19px]">
-                {item.title.includes("个人") ? "👤" : item.title.includes("健康") ? "💗" : item.title.includes("数据") ? "☁️" : item.title.includes("通知") ? "🔔" : item.title.includes("Day") ? "🌙" : "⚙️"}
+                {item.title.includes("个人")
+                  ? "👤"
+                  : item.title.includes("健康")
+                    ? "💗"
+                    : item.title.includes("数据")
+                      ? "☁️"
+                      : item.title.includes("通知")
+                        ? "🔔"
+                        : item.title.includes("主题")
+                          ? "🎨"
+                          : item.title.includes("小悦")
+                            ? "⭐"
+                            : item.title.includes("语音")
+                              ? "🔊"
+                              : "⚙️"}
               </span>
               <div>
                 <p className="text-[18px] leading-[1.15] font-semibold">{item.title}</p>
@@ -2865,16 +2893,185 @@ function MyScreen({
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {item.key === "mode" ? (
-                <span className="text-[13px] text-emerald-300">{switching ? "切换中…" : item.status}</span>
-              ) : (
-                item.status && <span className="max-w-[76px] text-right text-[12px] leading-4 text-emerald-300">{item.status}</span>
-              )}
+              {item.status && <span className="max-w-[86px] text-right text-[12px] leading-4 text-emerald-300">{item.status}</span>}
               <ChevronRight className="h-4 w-4 text-white/70" />
             </div>
           </div>
         </GlassCard>
       ))}
+    </div>
+  );
+}
+
+function ThemeSettingsScreen({
+  state,
+  onState,
+  onBack,
+  onNotice,
+}: {
+  state: AppStatePayload;
+  onState: (state: AppStatePayload) => void;
+  onBack: () => void;
+  onNotice: (message: string) => void;
+}) {
+  const { mode, setMode } = useAppStore();
+  const [saving, setSaving] = useState<ThemeMode | null>(null);
+  const themes: Array<{
+    value: ThemeMode;
+    title: string;
+    subtitle: string;
+    desc: string;
+  }> = [
+    { value: "night", title: "星夜紫", subtitle: "当前默认", desc: "适合夜间陪伴、情绪安抚和沉浸式记录。" },
+    { value: "sunrise", title: "暖橙白昼", subtitle: "浅橙暖色系", desc: "适合白天使用，像晨光和热茶一样轻柔。" },
+    { value: "blossom", title: "粉樱治愈", subtitle: "粉色系", desc: "更柔软、更亲近，适合情绪支持与自我照顾。" },
+  ];
+
+  async function save(nextMode: ThemeMode) {
+    if (saving) return;
+    setSaving(nextMode);
+    setMode(nextMode);
+    try {
+      const response = await fetch("/api/user-settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: nextMode }),
+      });
+      const payload = (await response.json()) as { state?: AppStatePayload; error?: string };
+      if (!response.ok || !payload.state) {
+        setMode(state.user.currentMode);
+        onNotice(payload.error || "主题保存失败");
+        return;
+      }
+      onState(payload.state);
+      onNotice(`已切换到${themes.find((item) => item.value === nextMode)?.title ?? "新主题"}`);
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <SubHeader title="主题模式设置" source="来自我的 · 主题模式" onBack={onBack} />
+      <GlassCard className="p-4">
+        <p className="text-[18px] font-semibold">选择今天的陪伴氛围</p>
+        <p className="mt-1 text-[13px] leading-6 text-white/70">主题会同步影响首页、陪伴、时光记、我的、底部导航和主要操作控件。</p>
+      </GlassCard>
+      <div className="space-y-3">
+        {themes.map((item) => {
+          const active = mode === item.value;
+          return (
+            <button
+              key={item.value}
+              className={clsx(
+                "theme-choice theme-preview w-full rounded-[22px] border p-4 text-left transition active:scale-[0.99]",
+                `preview-${item.value}`,
+                active ? "border-white/55 shadow-[0_0_28px_rgba(255,255,255,.24)]" : "border-white/16",
+              )}
+              onClick={() => void save(item.value)}
+              disabled={Boolean(saving)}
+            >
+              <div className="flex items-center gap-4">
+                <div className="theme-swatch grid h-20 w-20 shrink-0 place-items-center rounded-[22px]">
+                  <AnimatedXiaoyue variant={state.settings.companionAvatar} size="sm" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="text-[20px] font-semibold">{item.title}</p>
+                    {active && <span className="rounded-full bg-white/18 px-2 py-0.5 text-[11px]">使用中</span>}
+                  </div>
+                  <p className="mt-1 text-[13px] text-white/72">{item.subtitle}</p>
+                  <p className="mt-1 text-[12px] leading-5 text-white/64">{item.desc}</p>
+                </div>
+                <ChevronRight className="h-5 w-5 shrink-0 text-white/64" />
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function CompanionAvatarSettingsScreen({
+  state,
+  onState,
+  onBack,
+  onNotice,
+}: {
+  state: AppStatePayload;
+  onState: (state: AppStatePayload) => void;
+  onBack: () => void;
+  onNotice: (message: string) => void;
+}) {
+  const [saving, setSaving] = useState<CompanionAvatar | null>(null);
+  const avatars: Array<{ value: CompanionAvatar; title: string; desc: string }> = [
+    { value: "star", title: "星星绒绒", desc: "默认形象，抱着小星星，像夜灯一样安静陪你。" },
+    { value: "moon", title: "月光团团", desc: "更软糯、更放松，适合晚安故事和睡前陪伴。" },
+    { value: "flower", title: "花苞小悦", desc: "更明亮、更治愈，适合白天记录和情绪鼓励。" },
+  ];
+
+  async function save(avatar: CompanionAvatar) {
+    if (saving) return;
+    setSaving(avatar);
+    try {
+      const response = await fetch("/api/user-settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companionAvatar: avatar }),
+      });
+      const payload = (await response.json()) as { state?: AppStatePayload; error?: string };
+      if (!response.ok || !payload.state) {
+        onNotice(payload.error || "小悦形象保存失败");
+        return;
+      }
+      onState(payload.state);
+      onNotice(`已选择${avatars.find((item) => item.value === avatar)?.title ?? "小悦形象"}`);
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <SubHeader title="小悦形象设置" source="来自我的 · 小悦形象" onBack={onBack} />
+      <GlassCard className="p-4">
+        <div className="flex items-center gap-4">
+          <AnimatedXiaoyue variant={state.settings.companionAvatar} size="lg" talking />
+          <div>
+            <p className="text-[20px] font-semibold">会呼吸的小悦</p>
+            <p className="mt-1 text-[13px] leading-6 text-white/72">当前版本使用 CSS 3D 动画形象，保证三套主题里风格统一、加载快、不会拼接。</p>
+          </div>
+        </div>
+      </GlassCard>
+      <div className="grid grid-cols-1 gap-3">
+        {avatars.map((item) => {
+          const active = state.settings.companionAvatar === item.value;
+          return (
+            <button
+              key={item.value}
+              className={clsx(
+                "rounded-[22px] border bg-white/8 p-4 text-left transition active:scale-[0.99]",
+                active ? "border-[#ffe2a4] bg-white/14 shadow-[0_0_26px_rgba(255,224,164,.28)]" : "border-white/14",
+              )}
+              onClick={() => void save(item.value)}
+              disabled={Boolean(saving)}
+            >
+              <div className="flex items-center gap-4">
+                <AnimatedXiaoyue variant={item.value} size="md" talking={active} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="text-[18px] font-semibold">{item.title}</p>
+                    {active && <span className="rounded-full bg-[#ffe2a4]/18 px-2 py-0.5 text-[11px] text-[#ffe2a4]">使用中</span>}
+                  </div>
+                  <p className="mt-1 text-[13px] leading-6 text-white/70">{item.desc}</p>
+                </div>
+                <ChevronRight className="h-5 w-5 shrink-0 text-white/62" />
+              </div>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -3132,7 +3329,7 @@ function BottomNav({
   ];
   return (
     <div className="absolute inset-x-0 bottom-0 z-30 px-2 pb-[max(8px,env(safe-area-inset-bottom))]">
-      <nav className="grid grid-cols-5 rounded-[30px] border border-white/14 bg-[#18235f]/90 px-2 py-3 shadow-[0_14px_26px_rgba(7,12,44,.45)] backdrop-blur-xl">
+      <nav className="bottom-nav grid grid-cols-5 rounded-[30px] border border-white/14 bg-[#18235f]/90 px-2 py-3 shadow-[0_14px_26px_rgba(7,12,44,.45)] backdrop-blur-xl">
         {items.map((item) => {
           const Icon = item.icon;
           return (
@@ -3158,22 +3355,43 @@ function BottomNav({
   );
 }
 
-function NightBackdrop({ mode }: { mode: "day" | "night" }) {
+function AnimatedXiaoyue({
+  variant,
+  size = "md",
+  talking = false,
+}: {
+  variant: CompanionAvatar;
+  size?: "xs" | "sm" | "md" | "lg";
+  talking?: boolean;
+}) {
   return (
-    <div className="fixed inset-0 -z-10 overflow-hidden">
-      {mode === "night" ? (
-        <>
-          <div className="absolute inset-0 bg-[radial-gradient(130%_90%_at_50%_0%,#2f3f9f_0%,#111d5b_48%,#08113a_100%)]" />
-          <div className="absolute inset-0 opacity-70 [background-image:radial-gradient(circle,rgba(255,232,165,.95)_0_1px,transparent_1.7px)] [background-size:92px_104px]" />
-          <div className="absolute -top-10 left-1/2 h-64 w-64 -translate-x-1/2 rounded-full bg-[#ffe1a7]/25 blur-3xl" />
-        </>
-      ) : (
-        <>
-          <div className="absolute inset-0 bg-[radial-gradient(130%_90%_at_50%_0%,#6f84df_0%,#435dc1_45%,#213b95_100%)]" />
-          <div className="absolute inset-0 opacity-45 [background-image:radial-gradient(circle,rgba(255,244,203,.9)_0_1px,transparent_1.7px)] [background-size:96px_108px]" />
-          <div className="absolute -top-8 left-1/2 h-56 w-56 -translate-x-1/2 rounded-full bg-[#ffe7b6]/20 blur-3xl" />
-        </>
-      )}
+    <div className={clsx("xiaoyue-avatar", `xiaoyue-${variant}`, `xiaoyue-${size}`, talking && "is-talking")} aria-label="小悦形象">
+      <div className="xiaoyue-shadow" />
+      <div className="xiaoyue-body">
+        <span className="xiaoyue-hair" />
+        <span className="xiaoyue-ear left" />
+        <span className="xiaoyue-ear right" />
+        <span className="xiaoyue-eye left" />
+        <span className="xiaoyue-eye right" />
+        <span className="xiaoyue-blush left" />
+        <span className="xiaoyue-blush right" />
+        <span className="xiaoyue-mouth" />
+        <span className="xiaoyue-hand left" />
+        <span className="xiaoyue-hand right" />
+        <span className="xiaoyue-charm" />
+        <span className="xiaoyue-wave one" />
+        <span className="xiaoyue-wave two" />
+      </div>
+    </div>
+  );
+}
+
+function NightBackdrop({ mode }: { mode: ThemeMode }) {
+  return (
+    <div className="theme-backdrop fixed inset-0 -z-10 overflow-hidden" data-theme={mode}>
+      <div className="theme-bg absolute inset-0" />
+      <div className="theme-stars absolute inset-0" />
+      <div className="theme-glow absolute -top-10 left-1/2 h-64 w-64 -translate-x-1/2 rounded-full blur-3xl" />
     </div>
   );
 }
@@ -3190,7 +3408,7 @@ function GlassCard({
   return (
     <section
       className={clsx(
-        "rounded-[24px] border border-white/16 bg-[linear-gradient(145deg,rgba(128,112,208,.38),rgba(34,46,112,.5))] shadow-[inset_0_1px_0_rgba(255,255,255,.2),0_18px_45px_rgba(5,10,38,.35)] backdrop-blur-xl",
+        "glass-card rounded-[24px] border border-white/16 bg-[linear-gradient(145deg,rgba(128,112,208,.38),rgba(34,46,112,.5))] shadow-[inset_0_1px_0_rgba(255,255,255,.2),0_18px_45px_rgba(5,10,38,.35)] backdrop-blur-xl",
         onClick && "cursor-pointer transition active:scale-[0.99]",
         className,
       )}

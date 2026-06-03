@@ -107,7 +107,8 @@ function initialize(db: Database.Database) {
       data_synced INTEGER NOT NULL DEFAULT 1,
       voice_companion_enabled INTEGER NOT NULL DEFAULT 0,
       voice_auto_play_enabled INTEGER NOT NULL DEFAULT 0,
-      voice_tone TEXT NOT NULL DEFAULT 'youth_girl'
+      voice_tone TEXT NOT NULL DEFAULT 'youth_girl',
+      companion_avatar TEXT NOT NULL DEFAULT 'star'
     );
 
     CREATE TABLE IF NOT EXISTS today_plans (
@@ -185,11 +186,15 @@ function initialize(db: Database.Database) {
   const settingColumns = db.prepare("PRAGMA table_info(user_settings)").all() as Array<{ name: string }>;
   const hasVoiceTone = settingColumns.some((column) => column.name === "voice_tone");
   const hasVoiceAutoPlay = settingColumns.some((column) => column.name === "voice_auto_play_enabled");
+  const hasCompanionAvatar = settingColumns.some((column) => column.name === "companion_avatar");
   if (!hasVoiceTone) {
     db.exec("ALTER TABLE user_settings ADD COLUMN voice_tone TEXT NOT NULL DEFAULT 'youth_girl';");
   }
   if (!hasVoiceAutoPlay) {
     db.exec("ALTER TABLE user_settings ADD COLUMN voice_auto_play_enabled INTEGER NOT NULL DEFAULT 0;");
+  }
+  if (!hasCompanionAvatar) {
+    db.exec("ALTER TABLE user_settings ADD COLUMN companion_avatar TEXT NOT NULL DEFAULT 'star';");
   }
 
   const seeded = db
@@ -206,8 +211,8 @@ function initialize(db: Database.Database) {
 
   if (settingsSeeded.count === 0) {
     db.prepare(`
-      INSERT INTO user_settings (id, reminders_enabled, reminder_time, data_synced, voice_companion_enabled, voice_tone)
-      VALUES ('user_001', 1, '21:30', 1, 0, 'youth_girl')
+      INSERT INTO user_settings (id, reminders_enabled, reminder_time, data_synced, voice_companion_enabled, voice_tone, companion_avatar)
+      VALUES ('user_001', 1, '21:30', 1, 0, 'youth_girl', 'star')
     `).run();
   }
 
@@ -265,8 +270,8 @@ function seed(db: Database.Database) {
   });
 
   db.prepare(`
-    INSERT INTO user_settings (id, reminders_enabled, reminder_time, data_synced, voice_companion_enabled, voice_tone)
-    VALUES ('user_001', 1, '21:30', 0, 0, 'youth_girl')
+    INSERT INTO user_settings (id, reminders_enabled, reminder_time, data_synced, voice_companion_enabled, voice_tone, companion_avatar)
+    VALUES ('user_001', 1, '21:30', 0, 0, 'youth_girl', 'star')
   `).run();
 
   db.prepare(`
@@ -385,6 +390,12 @@ function id(prefix: string) {
   return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
 
+function normalizeThemeMode(value: unknown): UserProfile["currentMode"] {
+  if (value === "sunrise" || value === "day") return "sunrise";
+  if (value === "blossom" || value === "pink") return "blossom";
+  return "night";
+}
+
 export function getAppState(): AppStatePayload {
   const db = getDb();
   const userRow = db.prepare("SELECT * FROM user_profiles LIMIT 1").get() as Row;
@@ -400,7 +411,7 @@ export function getAppState(): AppStatePayload {
     id: String(userRow.id),
     name: String(userRow.name),
     companionName: String(userRow.companion_name),
-    currentMode: userRow.current_mode === "day" ? "day" : "night",
+    currentMode: normalizeThemeMode(userRow.current_mode),
   };
 
   const settings: UserSettings = {
@@ -412,6 +423,10 @@ export function getAppState(): AppStatePayload {
       settingsRow.voice_tone === "soft_girl" || settingsRow.voice_tone === "warm_neutral"
         ? (settingsRow.voice_tone as UserSettings["voiceTone"])
         : "youth_girl",
+    companionAvatar:
+      settingsRow.companion_avatar === "moon" || settingsRow.companion_avatar === "flower"
+        ? (settingsRow.companion_avatar as UserSettings["companionAvatar"])
+        : "star",
   };
 
   const today: TodayStatus = {
@@ -500,7 +515,7 @@ export function addChatMessage(role: ChatMessage["role"], content: string, emoti
 export function updateUserMode(mode: UserProfile["currentMode"]) {
   const db = getDb();
   db.prepare("UPDATE user_profiles SET current_mode = @mode WHERE id = 'user_001'").run({
-    mode,
+    mode: normalizeThemeMode(mode),
   });
 }
 
@@ -546,6 +561,15 @@ export function updateUserSettings(patch: UserSettingsPatch) {
   ) {
     assignments.push("voice_tone = @voice_tone");
     values.voice_tone = patch.voiceTone;
+  }
+
+  if (
+    patch.companionAvatar === "star" ||
+    patch.companionAvatar === "moon" ||
+    patch.companionAvatar === "flower"
+  ) {
+    assignments.push("companion_avatar = @companion_avatar");
+    values.companion_avatar = patch.companionAvatar;
   }
 
   if (!assignments.length) return;

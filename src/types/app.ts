@@ -25,14 +25,20 @@ export type Screen =
   | "health-archive"
   | "general-settings"
   | "reminder-settings"
+  | "theme-settings"
+  | "companion-avatar-settings"
   | "voice-settings"
   | "my";
+
+export type ThemeMode = "night" | "sunrise" | "blossom";
+
+export type CompanionAvatar = "star" | "moon" | "flower";
 
 export type UserProfile = {
   id: string;
   name: string;
   companionName: string;
-  currentMode: "day" | "night";
+  currentMode: ThemeMode;
 };
 
 export type UserSettings = {
@@ -41,6 +47,7 @@ export type UserSettings = {
   dataSynced: boolean;
   voiceCompanionEnabled: boolean;
   voiceTone: "youth_girl" | "soft_girl" | "warm_neutral";
+  companionAvatar: CompanionAvatar;
 };
 
 export type TodayStatus = {
