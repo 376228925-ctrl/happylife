@@ -71,13 +71,21 @@ body {
   color: var(--theme-text);
 }
 
-.theme-sunrise [class*="text-white"],
-.theme-blossom [class*="text-white"] {
+.theme-sunrise .glass-card [class*="text-white"],
+.theme-blossom .glass-card [class*="text-white"],
+.theme-sunrise .bottom-nav [class*="text-white"],
+.theme-blossom .bottom-nav [class*="text-white"],
+.theme-sunrise .theme-choice [class*="text-white"],
+.theme-blossom .theme-choice [class*="text-white"] {
   color: var(--theme-text) !important;
 }
 
-.theme-sunrise [class*="text-white/"],
-.theme-blossom [class*="text-white/"] {
+.theme-sunrise .glass-card [class*="text-white/"],
+.theme-blossom .glass-card [class*="text-white/"],
+.theme-sunrise .bottom-nav [class*="text-white/"],
+.theme-blossom .bottom-nav [class*="text-white/"],
+.theme-sunrise .theme-choice [class*="text-white/"],
+.theme-blossom .theme-choice [class*="text-white/"] {
   color: var(--theme-muted) !important;
 }
 
@@ -86,6 +94,46 @@ body {
 .theme-sunrise .small-btn,
 .theme-blossom .small-btn {
   color: #ffffff !important;
+}
+
+.theme-sunrise .mood-chip,
+.theme-blossom .mood-chip,
+.theme-sunrise .gradient-play-btn,
+.theme-blossom .gradient-play-btn,
+.theme-sunrise .chat-bubble-user,
+.theme-blossom .chat-bubble-user,
+.theme-sunrise .glass-card .chat-bubble-user,
+.theme-blossom .glass-card .chat-bubble-user,
+.theme-sunrise .user-avatar,
+.theme-blossom .user-avatar,
+.theme-sunrise .glass-card .user-avatar,
+.theme-blossom .glass-card .user-avatar,
+.theme-sunrise .companion-thinking-bubble,
+.theme-blossom .companion-thinking-bubble,
+.theme-sunrise .glass-card .companion-thinking-bubble,
+.theme-blossom .glass-card .companion-thinking-bubble {
+  color: #ffffff !important;
+}
+
+.theme-sunrise .mood-chip [class*="text-white"],
+.theme-blossom .mood-chip [class*="text-white"],
+.theme-sunrise .gradient-play-btn [class*="text-white"],
+.theme-blossom .gradient-play-btn [class*="text-white"],
+.theme-sunrise .chat-bubble-user [class*="text-white"],
+.theme-blossom .chat-bubble-user [class*="text-white"],
+.theme-sunrise .glass-card .chat-bubble-user,
+.theme-blossom .glass-card .chat-bubble-user,
+.theme-sunrise .glass-card .chat-bubble-user [class*="text-white"],
+.theme-blossom .glass-card .chat-bubble-user [class*="text-white"],
+.theme-sunrise .glass-card .user-avatar,
+.theme-blossom .glass-card .user-avatar,
+.theme-sunrise .companion-thinking-bubble [class*="text-white"],
+.theme-blossom .companion-thinking-bubble [class*="text-white"],
+.theme-sunrise .glass-card .companion-thinking-bubble,
+.theme-blossom .glass-card .companion-thinking-bubble,
+.theme-sunrise .glass-card .companion-thinking-bubble [class*="text-white"],
+.theme-blossom .glass-card .companion-thinking-bubble [class*="text-white"] {
+  color: rgba(255, 255, 255, 0.86) !important;
 }
 
 .theme-sunrise .icon-btn,
@@ -454,6 +502,23 @@ button {
 .theme-sunrise textarea::placeholder,
 .theme-blossom textarea::placeholder {
   color: color-mix(in srgb, var(--theme-text) 42%, transparent) !important;
+}
+
+.theme-sunrise .companion-chat-panel input,
+.theme-blossom .companion-chat-panel input {
+  background: rgba(255, 255, 255, 0.62);
+  border-color: color-mix(in srgb, var(--theme-text) 16%, transparent);
+}
+
+.theme-sunrise .chat-bubble-assistant,
+.theme-blossom .chat-bubble-assistant {
+  background: rgba(255, 255, 255, 0.48);
+  color: var(--theme-text);
+}
+
+.theme-sunrise .chat-bubble-assistant [class*="text-white"],
+.theme-blossom .chat-bubble-assistant [class*="text-white"] {
+  color: var(--theme-muted) !important;
 }
 
 .theme-sunrise .tag,

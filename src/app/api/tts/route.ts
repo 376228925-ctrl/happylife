@@ -10,21 +10,46 @@ type DoubaoTtsResponse = {
   data?: string;
 };
 
+const voiceTypeByTone = {
+  youth_girl: {
+    env: "VOLCENGINE_TTS_VOICE_TYPE_YOUTH_GIRL",
+    fallback: "BV113_streaming",
+    speed: 1.02,
+    pitch: 1.08,
+  },
+  soft_girl: {
+    env: "VOLCENGINE_TTS_VOICE_TYPE_SOFT_GIRL",
+    fallback: "BV001_streaming",
+    speed: 0.94,
+    pitch: 1.02,
+  },
+  warm_neutral: {
+    env: "VOLCENGINE_TTS_VOICE_TYPE_WARM_NEUTRAL",
+    fallback: "BV002_streaming",
+    speed: 0.96,
+    pitch: 0.98,
+  },
+} as const;
+
 export async function POST(request: Request) {
   const auth = requireAuth(request);
   if (!auth.ok) return auth.response;
 
-  const { text } = (await request.json().catch(() => ({}))) as { text?: string };
+  const { text, tone } = (await request.json().catch(() => ({}))) as {
+    text?: string;
+    tone?: keyof typeof voiceTypeByTone;
+  };
   const content = text?.replace(/\s+/g, " ").trim();
   if (!content) {
     return NextResponse.json({ error: "Missing text" }, { status: 400 });
   }
 
+  const voiceConfig = voiceTypeByTone[tone || "youth_girl"] || voiceTypeByTone.youth_girl;
   const appId = process.env.VOLCENGINE_TTS_APP_ID?.trim();
   const token = process.env.VOLCENGINE_TTS_TOKEN?.trim();
   if (!appId || !token) {
     return NextResponse.json(
-      { error: "CLOUD_TTS_NOT_CONFIGURED", message: "豆包语音尚未配置，已回退到设备系统音。" },
+      { error: "CLOUD_TTS_NOT_CONFIGURED", message: "豆包语音尚未配置，前端会保持静音并提示用户。" },
       { status: 503 },
     );
   }
@@ -43,12 +68,15 @@ export async function POST(request: Request) {
       },
       user: { uid: "happylife-companion" },
       audio: {
-        voice_type: process.env.VOLCENGINE_TTS_VOICE_TYPE?.trim() || "BV113_streaming",
+        voice_type:
+          process.env[voiceConfig.env]?.trim() ||
+          process.env.VOLCENGINE_TTS_VOICE_TYPE?.trim() ||
+          voiceConfig.fallback,
         encoding: "mp3",
         rate: 24000,
-        speed_ratio: 0.96,
+        speed_ratio: voiceConfig.speed,
         volume_ratio: 1,
-        pitch_ratio: 1,
+        pitch_ratio: voiceConfig.pitch,
       },
       request: {
         reqid: randomUUID(),

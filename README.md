@@ -22,13 +22,16 @@ DEEPSEEK_MODEL=deepseek-v4-flash
 DEEPSEEK_BASE_URL=https://api.deepseek.com
 ```
 
-可选配置豆包语音。配置后会优先使用云端 TTS；未配置时自动降级到设备系统语音：
+可选配置豆包语音。配置后会优先使用云端 TTS；未配置时默认保持静音并提示，不再突然播放设备系统音：
 
 ```bash
 VOLCENGINE_TTS_APP_ID=
 VOLCENGINE_TTS_TOKEN=
 VOLCENGINE_TTS_CLUSTER=volcano_tts
 VOLCENGINE_TTS_VOICE_TYPE=BV113_streaming
+VOLCENGINE_TTS_VOICE_TYPE_YOUTH_GIRL=BV113_streaming
+VOLCENGINE_TTS_VOICE_TYPE_SOFT_GIRL=BV001_streaming
+VOLCENGINE_TTS_VOICE_TYPE_WARM_NEUTRAL=BV002_streaming
 ```
 
 可选配置视觉模型。未配置时食物拍照识别会明确展示基础估算状态：
@@ -55,5 +58,5 @@ npm run start -- --port 3001
 - AI 陪伴对话：DeepSeek `deepseek-v4-flash`
 - 数据保存：SQLite
 - 数据备份：设置页支持导出完整 JSON
-- 语音陪伴：默认静音，用户主动播放；支持可选豆包 TTS
+- 语音陪伴：默认静音，用户主动播放；支持可选豆包 TTS，云端未配置时不强制播放系统音
 - 拍照识餐：支持视觉模型接入，没有视觉凭证时使用明确标注的基础估算

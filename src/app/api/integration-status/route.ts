@@ -41,8 +41,8 @@ export function GET(request: Request) {
         label: "语音陪伴",
         status: hasDoubaoTts ? "ready" : "limited",
         detail: hasDoubaoTts
-          ? `豆包语音 · ${process.env.VOLCENGINE_TTS_VOICE_TYPE?.trim() || "BV113_streaming"}`
-          : "当前使用设备系统音，配置豆包语音凭证后自动升级",
+          ? `豆包语音 · ${process.env.VOLCENGINE_TTS_VOICE_TYPE_YOUTH_GIRL?.trim() || process.env.VOLCENGINE_TTS_VOICE_TYPE?.trim() || "BV113_streaming"}`
+          : "默认静音防打扰，配置豆包少女音后可播放",
       },
       {
         id: "storage",

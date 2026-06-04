@@ -141,6 +141,7 @@ async function waitVoices() {
 
 let activeAudio: HTMLAudioElement | null = null;
 let activeAudioUrl: string | null = null;
+type VoicePlayResult = "cloud" | "system" | "unavailable";
 
 function stopVoice() {
   if (typeof window === "undefined") return;
@@ -161,17 +162,17 @@ async function speak(
   text: string,
   tone: AppStatePayload["settings"]["voiceTone"],
   onState?: (speaking: boolean) => void,
-) {
-  if (typeof window === "undefined") return;
+): Promise<VoicePlayResult> {
+  if (typeof window === "undefined") return "unavailable";
   const content = text.trim();
-  if (!content) return;
+  if (!content) return "unavailable";
   stopVoice();
 
   try {
     const response = await fetch("/api/tts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: content }),
+      body: JSON.stringify({ text: content, tone }),
     });
     if (response.ok) {
       const url = URL.createObjectURL(await response.blob());
@@ -188,13 +189,20 @@ async function speak(
         stopVoice();
       };
       await audio.play();
-      return;
+      return "cloud";
     }
   } catch {
-    // Fall through to the device voice when cloud TTS is unavailable.
+    // Keep voice output quiet when cloud TTS is unavailable.
   }
 
-  if (!("speechSynthesis" in window)) return;
+  const allowSystemVoice =
+    typeof window !== "undefined" && window.localStorage.getItem("happylife_allow_system_voice") === "1";
+  if (!allowSystemVoice) {
+    onState?.(false);
+    return "unavailable";
+  }
+
+  if (!("speechSynthesis" in window)) return "unavailable";
   const synth = window.speechSynthesis;
 
   const utterance = new SpeechSynthesisUtterance(content.replace(/\n+/g, " ").trim());
@@ -216,6 +224,7 @@ async function speak(
   utterance.onend = () => onState?.(false);
   utterance.onerror = () => onState?.(false);
   synth.speak(utterance);
+  return "system";
 }
 
 export default function Page() {
@@ -460,7 +469,15 @@ export default function Page() {
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2 }}
             >
-              {screen === "home" && <HomeScreen state={state} onNavigate={setScreen} mode={mode} onAction={runAction} />}
+              {screen === "home" && (
+                <HomeScreen
+                  state={state}
+                  onNavigate={setScreen}
+                  mode={mode}
+                  onAction={runAction}
+                  onNotice={showToast}
+                />
+              )}
               {screen === "health-overview" && <HealthOverviewScreen state={state} onNavigate={setScreen} />}
               {screen === "sleep-care" && (
                 <MetricScreen
@@ -978,11 +995,13 @@ function HomeScreen({
   onNavigate,
   mode,
   onAction,
+  onNotice,
 }: {
   state: AppStatePayload;
   onNavigate: (screen: Screen, tab?: Tab) => void;
   mode: ThemeMode;
   onAction: (action: ActionName, payload?: Record<string, unknown>) => Promise<ActionResponse | null>;
+  onNotice: (message: string) => void;
 }) {
   const primarySuggestion = state.suggestions.find((item) => item.isPrimary) ?? state.suggestions[0];
   const greeting =
@@ -1115,7 +1134,10 @@ function HomeScreen({
             className="ghost-btn h-[36px] shrink-0 px-3"
             onClick={async () => {
               await onAction("recommendation-play", { title: "今日陪伴语音" });
-              void speak("辛苦啦，今晚先把自己照顾好一点。慢慢来，我会在这里陪你。", state.settings.voiceTone);
+              const result = await speak("辛苦啦，今晚先把自己照顾好一点。慢慢来，我会在这里陪你。", state.settings.voiceTone);
+              if (result === "unavailable") {
+                onNotice("云端少女音还没配置，我先不播放难听的系统音");
+              }
             }}
           >
             <Play className="h-4 w-4" />
@@ -1462,7 +1484,12 @@ function CompanionScreen({
           (typeof payload.message === "object" ? payload.message.id : undefined) ||
           payload.state.chat[payload.state.chat.length - 1]?.id ||
           "";
-        void speak(replyText, state.settings.voiceTone, (active) => setSpeakingMessageId(active ? replyId : null));
+        const voiceResult = await speak(replyText, state.settings.voiceTone, (active) =>
+          setSpeakingMessageId(active ? replyId : null),
+        );
+        if (voiceResult === "unavailable") {
+          onNotice("云端少女音还没配置，我先不播放难听的系统音");
+        }
       }
       return true;
     } finally {
@@ -1480,16 +1507,115 @@ function CompanionScreen({
     }
   }
 
-  function toggleReplyVoice(message: AppStatePayload["chat"][number]) {
+  async function toggleReplyVoice(message: AppStatePayload["chat"][number]) {
     if (speakingMessageId === message.id) {
       stopVoice();
       setSpeakingMessageId(null);
       return;
     }
-    void speak(message.content, state.settings.voiceTone, (active) =>
+    const result = await speak(message.content, state.settings.voiceTone, (active) =>
       setSpeakingMessageId(active ? message.id : null),
     );
+    if (result === "unavailable") {
+      onNotice("云端少女音还没配置，我先不播放难听的系统音");
+    }
   }
+
+  const chatPanel = (
+    <GlassCard className="companion-chat-panel px-4 py-4">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div>
+          <p className="text-[18px] font-semibold">和小悦说说话</p>
+          <p className="mt-0.5 text-[12px] text-white/68">小悦会认真听，也会慢慢回应你</p>
+        </div>
+        <span className="shrink-0 rounded-full border border-white/16 bg-white/10 px-2 py-1 text-[11px] text-white/70">
+          {thinking ? "正在回应" : connectionTag}
+        </span>
+      </div>
+      <div className="max-h-[330px] space-y-2 overflow-y-auto pr-1">
+        {state.chat.slice(-6).map((message) => (
+          <div
+            key={message.id}
+            className={clsx("flex items-end gap-2", message.role === "user" ? "justify-end" : "justify-start")}
+          >
+            {message.role !== "user" && (
+              <div className="relative grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full border border-white/25 bg-white/10">
+                <AnimatedXiaoyue variant={state.settings.companionAvatar} size="xs" talking={speakingMessageId === message.id} />
+                {speakingMessageId === message.id && (
+                  <span className="absolute -right-0.5 -bottom-0.5 h-2.5 w-2.5 rounded-full bg-emerald-300 ring-2 ring-[#1f2b74]" />
+                )}
+              </div>
+            )}
+            <div
+              className={clsx(
+                "max-w-[76%] rounded-[18px] px-4 py-2.5 text-[14px] leading-6",
+                message.role === "user" ? "chat-bubble-user bg-[#9474ff] text-white" : "chat-bubble-assistant bg-white/12",
+              )}
+            >
+              <p className="mb-1 text-[11px] text-white/65">{message.role === "user" ? state.user.name : "小悦"}</p>
+              <p>{message.content}</p>
+              {message.role === "assistant" && (
+                <button
+                  className="mt-1.5 inline-flex items-center gap-1 text-[11px] text-white/62"
+                  onClick={() => void toggleReplyVoice(message)}
+                  aria-label={speakingMessageId === message.id ? "停止朗读小悦回复" : "朗读小悦回复"}
+                >
+                  {speakingMessageId === message.id ? <Pause className="h-3 w-3 fill-current" /> : <Volume2 className="h-3 w-3" />}
+                  {speakingMessageId === message.id ? "停止" : "听小悦说"}
+                </button>
+              )}
+            </div>
+            {message.role === "user" && (
+              <div className="user-avatar grid h-8 w-8 shrink-0 place-items-center rounded-full border border-white/25 bg-[#a78dff] text-[12px] font-semibold text-white">
+                {userInitial}
+              </div>
+            )}
+          </div>
+        ))}
+        {thinking && (
+          <div className="flex items-end gap-2">
+            <div className="relative grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full border border-white/25 bg-white/10">
+              <AnimatedXiaoyue variant={state.settings.companionAvatar} size="xs" talking />
+            </div>
+            <div className="companion-thinking-bubble max-w-[76%] rounded-[18px] bg-white/12 px-4 py-2.5">
+              <p className="mb-1 text-[11px] text-white/65">小悦正在回答...</p>
+              <div className="flex items-center gap-1">
+                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-white/85" />
+                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-white/85 [animation-delay:120ms]" />
+                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-white/85 [animation-delay:240ms]" />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        {["今天有点累", "想被鼓励一下", "帮我慢下来"].map((prompt) => (
+          <button
+            key={prompt}
+            className="rounded-full border border-white/12 bg-white/8 px-2 py-2 text-[12px] text-white/72"
+            onClick={() => setText(prompt)}
+          >
+            {prompt}
+          </button>
+        ))}
+      </div>
+      <div className="mt-3 flex gap-2">
+        <input
+          ref={inputRef}
+          value={text}
+          onChange={(event) => {
+            setText(event.target.value);
+          }}
+          onKeyDown={(event) => event.key === "Enter" && void send()}
+          placeholder={thinking ? "小悦正在回应..." : "愿意说一点点也可以"}
+          className="min-w-0 flex-1 rounded-full border border-white/18 bg-white/10 px-4 py-2.5 text-[14px] outline-none"
+        />
+        <button className="icon-btn h-11 w-11" aria-label="发送消息" onClick={() => void send()} disabled={thinking}>
+          <Send className="h-4 w-4" />
+        </button>
+      </div>
+    </GlassCard>
+  );
 
   return (
     <div className="space-y-3 pb-2">
@@ -1502,7 +1628,7 @@ function CompanionScreen({
         </button>
       </div>
 
-      <section className="hero-card min-h-[280px]">
+      <section className="hero-card min-h-[236px]">
         <Image src="/image2/companion-hero.png" alt="陪伴小悦" width={396} height={320} className="pointer-events-none absolute inset-0 h-full w-full object-cover object-right" />
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,18,61,.42)_0%,rgba(10,18,61,.28)_56%,rgba(10,18,61,.22)_100%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(90%_90%_at_14%_28%,rgba(10,18,61,.68)_0%,rgba(10,18,61,.4)_45%,rgba(10,18,61,0)_100%)]" />
@@ -1515,6 +1641,8 @@ function CompanionScreen({
           </span>
         </div>
       </section>
+
+      {chatPanel}
 
       <GlassCard className="px-4 py-4">
         <div className="flex items-center justify-between gap-3">
@@ -1566,7 +1694,7 @@ function CompanionScreen({
             <button
               key={title}
               className={clsx(
-                "rounded-[16px] border border-white/18 p-2 text-center transition active:scale-[0.98]",
+                "mood-chip rounded-[16px] border border-white/18 p-2 text-center text-white transition active:scale-[0.98]",
                 index === 0 && "ring-2 ring-[#c7b4ff]/80",
               )}
               style={{ background: `linear-gradient(180deg, ${color}, rgba(73,61,133,0.8))` }}
@@ -1606,10 +1734,13 @@ function CompanionScreen({
                 <p className="truncate text-[13px] text-white/74">{subtitle}</p>
               </div>
               <button
-                className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-white/20 bg-[linear-gradient(135deg,#ac95ff,#7e60ff)]"
+                className="gradient-play-btn grid h-12 w-12 shrink-0 place-items-center rounded-full border border-white/20 bg-[linear-gradient(135deg,#ac95ff,#7e60ff)] text-white"
                 onClick={async () => {
                   await onAction("recommendation-play", { title });
-                  void speak(`${title}。${subtitle}`, state.settings.voiceTone);
+                  const result = await speak(`${title}。${subtitle}`, state.settings.voiceTone);
+                  if (result === "unavailable") {
+                    onNotice("云端少女音还没配置，我先不播放难听的系统音");
+                  }
                 }}
                 aria-label={`播放陪伴语音：${title}`}
               >
@@ -1620,74 +1751,6 @@ function CompanionScreen({
         </div>
       </GlassCard>
 
-      <GlassCard className="px-4 py-4">
-        <div className="space-y-2">
-          {state.chat.slice(-4).map((message) => (
-            <div
-              key={message.id}
-              className={clsx("flex items-end gap-2", message.role === "user" ? "justify-end" : "justify-start")}
-            >
-              {message.role !== "user" && (
-                <div className="relative grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full border border-white/25 bg-white/10">
-                  <AnimatedXiaoyue variant={state.settings.companionAvatar} size="xs" talking={speakingMessageId === message.id} />
-                  {speakingMessageId === message.id && (
-                    <span className="absolute -right-0.5 -bottom-0.5 h-2.5 w-2.5 rounded-full bg-emerald-300 ring-2 ring-[#1f2b74]" />
-                  )}
-                </div>
-              )}
-              <div className={clsx("max-w-[76%] rounded-[18px] px-4 py-2.5 text-[14px] leading-6", message.role === "user" ? "bg-[#9474ff]" : "bg-white/12")}>
-                <p className="mb-1 text-[11px] text-white/65">{message.role === "user" ? state.user.name : "小悦"}</p>
-                <p>{message.content}</p>
-                {message.role === "assistant" && (
-                  <button
-                    className="mt-1.5 inline-flex items-center gap-1 text-[11px] text-white/62"
-                    onClick={() => toggleReplyVoice(message)}
-                    aria-label={speakingMessageId === message.id ? "停止朗读小悦回复" : "朗读小悦回复"}
-                  >
-                    {speakingMessageId === message.id ? <Pause className="h-3 w-3 fill-current" /> : <Volume2 className="h-3 w-3" />}
-                    {speakingMessageId === message.id ? "停止" : "听小悦说"}
-                  </button>
-                )}
-              </div>
-              {message.role === "user" && (
-                <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-white/25 bg-[#a78dff] text-[12px] font-semibold text-white">
-                  {userInitial}
-                </div>
-              )}
-            </div>
-          ))}
-          {thinking && (
-            <div className="flex items-end gap-2">
-              <div className="relative grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full border border-white/25 bg-white/10">
-                <AnimatedXiaoyue variant={state.settings.companionAvatar} size="xs" talking />
-              </div>
-              <div className="max-w-[76%] rounded-[18px] bg-white/12 px-4 py-2.5">
-                <p className="mb-1 text-[11px] text-white/65">小悦正在回答...</p>
-                <div className="flex items-center gap-1">
-                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-white/85" />
-                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-white/85 [animation-delay:120ms]" />
-                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-white/85 [animation-delay:240ms]" />
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-        <div className="mt-3 flex gap-2">
-          <input
-            ref={inputRef}
-            value={text}
-            onChange={(event) => {
-              setText(event.target.value);
-            }}
-            onKeyDown={(event) => event.key === "Enter" && void send()}
-            placeholder={thinking ? "小悦正在回应..." : "愿意说一点点也可以"}
-            className="min-w-0 flex-1 rounded-full border border-white/18 bg-white/10 px-4 py-2.5 text-[14px] outline-none"
-          />
-          <button className="icon-btn h-11 w-11" aria-label="发送消息" onClick={() => void send()} disabled={thinking}>
-            <Send className="h-4 w-4" />
-          </button>
-        </div>
-      </GlassCard>
     </div>
   );
 }
@@ -2333,15 +2396,13 @@ function StoryPlayerScreen({
 
   useEffect(() => {
     return () => {
-      if (typeof window !== "undefined" && "speechSynthesis" in window) {
-        window.speechSynthesis.cancel();
-      }
+      stopVoice();
     };
   }, []);
 
   async function toggleStory() {
     if (playing) {
-      window.speechSynthesis.cancel();
+      stopVoice();
       setPlaying(false);
       return;
     }
@@ -2349,7 +2410,10 @@ function StoryPlayerScreen({
       setLogged(true);
       await onAction("play-story");
     }
-    await speak(story, state.settings.voiceTone, setPlaying);
+    const result = await speak(story, state.settings.voiceTone, setPlaying);
+    if (result === "unavailable") {
+      onNotice("云端少女音还没配置，我先不播放难听的系统音");
+    }
   }
 
   return (
@@ -3221,8 +3285,16 @@ function VoiceSettingsScreen({
   }
 
   async function testVoice() {
-    await speak("嗨，我是小悦。今天辛苦啦，我会一直温柔地陪你。", tone);
-    onNotice("已播放试音");
+    const result = await speak("嗨，我是小悦。今天辛苦啦，我会一直温柔地陪你。", tone);
+    if (result === "cloud") {
+      onNotice("已播放云端少女音试音");
+      return;
+    }
+    if (result === "system") {
+      onNotice("当前使用的是设备系统音，建议配置云端少女音");
+      return;
+    }
+    onNotice("云端少女音还没配置，我先不播放难听的系统音");
   }
 
   return (
@@ -3284,7 +3356,7 @@ function VoiceSettingsScreen({
       <GlassCard className="p-4">
         <p className="text-[16px] font-semibold">安静优先</p>
         <p className="mt-2 text-[13px] leading-6 text-white/72">
-          即使保持默认静音，你仍然可以在每条小悦回复旁主动点击“听小悦说”。没有得到你的选择，页面不会突然播放声音。
+          即使保持默认静音，你仍然可以在每条小悦回复旁主动点击“听小悦说”。没有配置真实云端少女音时，小悦不会再回退到生硬的系统音。
         </p>
       </GlassCard>
     </div>
