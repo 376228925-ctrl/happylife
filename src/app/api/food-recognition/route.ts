@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
-import { addRecognizedMealRecord, getAppState } from "@/lib/db";
+import { getAppState } from "@/lib/db";
 
 export const runtime = "nodejs";
 
@@ -11,6 +11,12 @@ type VisionResult = {
   confidence: number;
   mealType?: "早餐" | "午餐" | "晚餐" | "加餐";
   note?: string;
+  carbs: number;
+  protein: number;
+  fat: number;
+  fiber: number;
+  vitamins: string;
+  portion: string;
   provider: string;
   usedFallback?: boolean;
 };
@@ -36,12 +42,28 @@ function parseVisionJson(rawText: string, provider: string): VisionResult | null
     const caloriesRaw = Number(parsed.calories ?? parsed.kcal ?? 0);
     const confidenceRaw = Number(parsed.confidence ?? 0.65);
     if (!foodName || !Number.isFinite(caloriesRaw) || caloriesRaw <= 0) return null;
+    const numberField = (key: string, fallback: number) => {
+      const value = Number(parsed[key]);
+      return Number.isFinite(value) ? Math.max(0, Math.round(value)) : fallback;
+    };
     return {
       foodName,
       calories: Math.max(20, Math.round(caloriesRaw)),
       confidence: Math.max(0.01, Math.min(1, Number.isFinite(confidenceRaw) ? confidenceRaw : 0.65)),
       mealType: pickMealType(parsed.mealType),
       note: typeof parsed.note === "string" ? parsed.note : undefined,
+      carbs: numberField("carbs", Math.round(Math.max(20, caloriesRaw * 0.12))),
+      protein: numberField("protein", Math.round(Math.max(6, caloriesRaw * 0.045))),
+      fat: numberField("fat", Math.round(Math.max(4, caloriesRaw * 0.035))),
+      fiber: numberField("fiber", Math.round(Math.max(1, caloriesRaw * 0.008))),
+      vitamins:
+        typeof parsed.vitamins === "string" && parsed.vitamins.trim()
+          ? parsed.vitamins.trim().slice(0, 80)
+          : "维生素/矿物质需结合食材确认",
+      portion:
+        typeof parsed.portion === "string" && parsed.portion.trim()
+          ? parsed.portion.trim().slice(0, 48)
+          : "约 1 份",
       provider,
     };
   } catch {
@@ -60,9 +82,10 @@ async function recognizeViaProvider(args: {
   const { provider, apiKey, baseURL, model, dataUrl, hint } = args;
   const client = new OpenAI({ apiKey, baseURL });
   const prompt = [
-    "请识别图片中的主要食物，并估算总热量（kcal）。",
+    "请识别图片中的主要食物，并按营养师口径估算总热量与宏量营养。",
+    "请结合可见分量、烹饪方式、油脂/酱料可能性进行保守估算。",
     "必须只返回 JSON：",
-    '{"foodName":"食物名","calories":450,"confidence":0.82,"mealType":"早餐|午餐|晚餐|加餐","note":"一句简短说明"}',
+    '{"foodName":"食物名","portion":"约250g/一碗/一份","calories":450,"carbs":55,"protein":24,"fat":16,"fiber":5,"vitamins":"维生素C、钾、叶酸等","confidence":0.82,"mealType":"早餐|午餐|晚餐|加餐","note":"一句专业但简短的营养说明"}',
     "不要输出任何额外文字。",
     hint ? `用户补充：${hint}` : "",
   ]
@@ -128,6 +151,12 @@ async function recognizeFood(dataUrl: string, hint?: string): Promise<VisionResu
   return {
     foodName: hint?.trim() || "拍摄食物",
     calories: 420,
+    carbs: 52,
+    protein: 18,
+    fat: 14,
+    fiber: 5,
+    vitamins: "维生素与矿物质需结合食材确认",
+    portion: "约 1 份",
     confidence: 0.42,
     note: "当前视觉模型不可用，已用基础估算，建议手动确认。",
     provider: "Fallback Estimate",
@@ -157,19 +186,11 @@ export async function POST(request: Request) {
     const mime = file.type || "image/jpeg";
     const dataUrl = `data:${mime};base64,${bytes.toString("base64")}`;
     const recognized = await recognizeFood(dataUrl, hint);
-    const saved = addRecognizedMealRecord({
-      foodName: recognized.foodName,
-      calories: recognized.calories,
-      confidence: recognized.confidence,
-      mealType: recognized.mealType,
-      note: recognized.note,
-      source: recognized.provider,
-    });
 
     return NextResponse.json({
       provider: recognized.provider,
       usedFallback: Boolean(recognized.usedFallback),
-      result: saved,
+      result: recognized,
       state: getAppState(),
     });
   } catch {

@@ -145,6 +145,16 @@ body {
   color: var(--theme-text) !important;
 }
 
+.theme-sunrise .sub-header,
+.theme-blossom .sub-header {
+  color: var(--theme-text);
+}
+
+.theme-sunrise .sub-header [class*="text-white"],
+.theme-blossom .sub-header [class*="text-white"] {
+  color: var(--theme-muted) !important;
+}
+
 .theme-bg {
   background: var(--theme-bg);
 }
@@ -533,6 +543,101 @@ button {
   background:
     radial-gradient(circle, rgba(88, 57, 95, 0.82) 56%, transparent 58%),
     conic-gradient(from 230deg, #ff9fbd 0 70%, #ffd995 70% 90%, rgba(255, 255, 255, 0.28) 90% 100%);
+}
+
+@media (max-width: 430px) {
+  .phone-shell {
+    max-width: 100vw;
+  }
+
+  .phone-shell .no-scrollbar {
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+  }
+
+  .phone-shell .glass-card {
+    border-radius: 20px !important;
+  }
+
+  .phone-shell .hero-card {
+    min-height: 204px !important;
+    border-radius: 22px;
+    padding: 14px;
+  }
+
+  .phone-shell [class*="min-h-[286px]"],
+  .phone-shell [class*="min-h-[280px]"],
+  .phone-shell [class*="min-h-[272px]"],
+  .phone-shell [class*="min-h-[258px]"],
+  .phone-shell [class*="min-h-[236px]"] {
+    min-height: 204px !important;
+  }
+
+  .phone-shell [class*="text-[42px]"] { font-size: 31px !important; }
+  .phone-shell [class*="text-[38px]"] { font-size: 29px !important; }
+  .phone-shell [class*="text-[34px]"] { font-size: 27px !important; }
+  .phone-shell [class*="text-[32px]"] { font-size: 25px !important; }
+  .phone-shell [class*="text-[28px]"] { font-size: 23px !important; }
+  .phone-shell [class*="text-[27px]"] { font-size: 22px !important; }
+  .phone-shell [class*="text-[26px]"] { font-size: 22px !important; }
+  .phone-shell [class*="text-[25px]"] { font-size: 21px !important; }
+  .phone-shell [class*="text-[24px]"] { font-size: 20px !important; }
+  .phone-shell [class*="text-[23px]"] { font-size: 20px !important; }
+  .phone-shell [class*="text-[22px]"] { font-size: 19px !important; }
+  .phone-shell [class*="text-[20px]"] { font-size: 18px !important; }
+  .phone-shell [class*="text-[18px]"] { font-size: 16px !important; }
+
+  .phone-shell .primary-btn,
+  .phone-shell .ghost-btn,
+  .phone-shell .small-btn {
+    min-height: 34px;
+    padding-left: 11px;
+    padding-right: 11px;
+    font-size: 12px;
+    gap: 5px;
+    white-space: nowrap;
+  }
+
+  .phone-shell .tool-btn {
+    padding: 8px 7px;
+    font-size: 12px;
+  }
+
+  .phone-shell .bottom-nav {
+    border-radius: 24px;
+    padding: 8px 8px 9px;
+  }
+
+  .phone-shell .bottom-nav button {
+    font-size: 11px !important;
+    gap: 2px;
+  }
+
+  .phone-shell .bottom-nav button[aria-label="快速记录"] {
+    margin-top: -24px;
+  }
+
+  .phone-shell .bottom-nav button[aria-label="快速记录"] span {
+    width: 54px !important;
+    height: 54px !important;
+  }
+
+  .phone-shell .bottom-nav button[aria-label="快速记录"] svg {
+    width: 26px !important;
+    height: 26px !important;
+  }
+
+  .phone-shell input,
+  .phone-shell textarea,
+  .phone-shell select {
+    font-size: 13px !important;
+  }
+
+  .phone-shell .ring-score {
+    width: 86px;
+    height: 86px;
+    font-size: 31px;
+  }
 }
 
 .theme-choice {

@@ -634,6 +634,11 @@ type MealRecognitionInput = {
   note?: string;
   mealType?: "早餐" | "午餐" | "晚餐" | "加餐";
   source?: string;
+  carbs?: number;
+  protein?: number;
+  fat?: number;
+  fiber?: number;
+  vitamins?: string;
 };
 
 function inferMealType(now = new Date()) {
@@ -708,10 +713,19 @@ export function addRecognizedMealRecord(input: MealRecognitionInput) {
   const sourceLabel = input.source ? `（来源：${input.source}）` : "";
   const confidence =
     typeof input.confidence === "number" ? `${Math.round(Math.max(0, Math.min(1, input.confidence)) * 100)}%` : "估算";
+  const nutritionSummary = [
+    typeof input.carbs === "number" ? `碳水 ${Math.round(input.carbs)}g` : "",
+    typeof input.protein === "number" ? `蛋白质 ${Math.round(input.protein)}g` : "",
+    typeof input.fat === "number" ? `脂肪 ${Math.round(input.fat)}g` : "",
+    typeof input.fiber === "number" ? `膳食纤维 ${Math.round(input.fiber)}g` : "",
+    input.vitamins ? `维生素/矿物质：${input.vitamins}` : "",
+  ].filter(Boolean);
   addMemory({
     type: "diet",
     title: `拍照识餐：${normalizedFood}`,
-    content: `识别热量约 ${calories} kcal，置信度 ${confidence}${sourceLabel}${input.note ? `。${input.note}` : ""}`,
+    content: `识别热量约 ${calories} kcal，置信度 ${confidence}${sourceLabel}${
+      nutritionSummary.length ? `。${nutritionSummary.join("，")}` : ""
+    }${input.note ? `。${input.note}` : ""}`,
     mood: "安心",
     time: "刚刚",
     tags: ["拍照识餐", mealType],
@@ -724,6 +738,11 @@ export function addRecognizedMealRecord(input: MealRecognitionInput) {
     target,
     balance: nextBalance,
     statusText,
+    carbs: input.carbs,
+    protein: input.protein,
+    fat: input.fat,
+    fiber: input.fiber,
+    vitamins: input.vitamins,
   };
 }
 

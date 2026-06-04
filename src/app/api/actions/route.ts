@@ -3,6 +3,7 @@ import { requireAuth } from "@/lib/auth";
 import {
   addChatMessage,
   addMemory,
+  addRecognizedMealRecord,
   getAppState,
   incrementWaterCups,
   toggleTodayPlan,
@@ -19,6 +20,7 @@ type ActionType =
   | "play-music"
   | "start-stretch"
   | "meal-photo"
+  | "confirm-meal"
   | "dinner-suggestion"
   | "reflect-today"
   | "write-diary"
@@ -200,6 +202,33 @@ export async function POST(request: Request) {
         tags: ["饮食", "识餐"],
       });
       toast = "已完成拍照识餐并写入饮食记录";
+      break;
+    }
+    case "confirm-meal": {
+      const foodName = typeof payload.foodName === "string" ? payload.foodName.trim() : "";
+      const calories = Number(payload.calories);
+      if (!foodName || !Number.isFinite(calories) || calories <= 0) {
+        return actionError("请确认食物名称和热量");
+      }
+      const mealTypeRaw = payload.mealType;
+      const mealType =
+        mealTypeRaw === "早餐" || mealTypeRaw === "午餐" || mealTypeRaw === "晚餐" || mealTypeRaw === "加餐"
+          ? mealTypeRaw
+          : undefined;
+      const saved = addRecognizedMealRecord({
+        foodName,
+        calories,
+        confidence: Number(payload.confidence),
+        mealType,
+        note: typeof payload.note === "string" ? payload.note : undefined,
+        source: typeof payload.source === "string" ? payload.source : undefined,
+        carbs: Number.isFinite(Number(payload.carbs)) ? Number(payload.carbs) : undefined,
+        protein: Number.isFinite(Number(payload.protein)) ? Number(payload.protein) : undefined,
+        fat: Number.isFinite(Number(payload.fat)) ? Number(payload.fat) : undefined,
+        fiber: Number.isFinite(Number(payload.fiber)) ? Number(payload.fiber) : undefined,
+        vitamins: typeof payload.vitamins === "string" ? payload.vitamins : undefined,
+      });
+      toast = `已记录：${saved.foodName} ${saved.calories} kcal`;
       break;
     }
     case "dinner-suggestion": {

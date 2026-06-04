@@ -32,6 +32,7 @@ import {
   ShieldCheck,
   Sparkles,
   Smartphone,
+  Upload,
   User,
   Volume2,
 } from "lucide-react";
@@ -50,6 +51,7 @@ type ActionName =
   | "play-music"
   | "start-stretch"
   | "meal-photo"
+  | "confirm-meal"
   | "dinner-suggestion"
   | "reflect-today"
   | "write-diary"
@@ -59,7 +61,8 @@ type ActionName =
   | "emotion-support"
   | "recommendation-play"
   | "night-reminder-fired"
-  | "toggle-plan";
+  | "toggle-plan"
+  | "confirm-meal";
 
 type ActionResponse = {
   state: AppStatePayload;
@@ -82,6 +85,22 @@ type AuthUser = {
   phone: string | null;
   avatarUrl: string | null;
   primaryProvider: string;
+};
+
+type RecognizedFoodDraft = {
+  foodName: string;
+  portion: string;
+  calories: number;
+  carbs: number;
+  protein: number;
+  fat: number;
+  fiber: number;
+  vitamins: string;
+  confidence: number;
+  mealType?: "早餐" | "午餐" | "晚餐" | "加餐";
+  note?: string;
+  provider?: string;
+  usedFallback?: boolean;
 };
 
 function parseReminderToNextDelay(reminderTime: string) {
@@ -1769,16 +1788,19 @@ function QuickRecordScreen({
   const [category, setCategory] = useState<string>("talk_to_xiaoyue");
   const [photoHint, setPhotoHint] = useState("");
   const [recognizingPhoto, setRecognizingPhoto] = useState(false);
+  const [savingMeal, setSavingMeal] = useState(false);
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [foodDraft, setFoodDraft] = useState<RecognizedFoodDraft | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
+  const albumInputRef = useRef<HTMLInputElement | null>(null);
   const categories = [
-    { key: "mood", label: "心情记录", icon: Heart },
-    { key: "diet", label: "饮食记录", icon: Leaf },
-    { key: "sleep", label: "睡眠记录", icon: Moon },
-    { key: "water", label: "喝水记录", icon: Droplets },
-    { key: "exercise", label: "运动记录", icon: Activity },
-    { key: "moment", label: "当前瞬间", icon: Sparkles },
-    { key: "talk_to_xiaoyue", label: "对小悦说句话", icon: Send },
+    { key: "mood", label: "心情", icon: Heart },
+    { key: "diet", label: "饮食", icon: Leaf },
+    { key: "sleep", label: "睡眠", icon: Moon },
+    { key: "water", label: "喝水", icon: Droplets },
+    { key: "exercise", label: "运动", icon: Activity },
+    { key: "moment", label: "此刻", icon: Sparkles },
+    { key: "talk_to_xiaoyue", label: "小悦", icon: Send },
   ] as const;
 
   useEffect(() => {
@@ -1849,18 +1871,59 @@ function QuickRecordScreen({
         error?: string;
         provider?: string;
         usedFallback?: boolean;
-        result?: { foodName: string; calories: number; intakeAfter: number; target: number; balance: number };
+        result?: RecognizedFoodDraft;
       };
-      if (!response.ok || !payload.state || !payload.result) {
+      if (!response.ok || !payload.result) {
         onNotice(payload.error || "识别失败，请换个角度再拍一次");
         return;
       }
 
-      onState(payload.state);
-      const extra = payload.usedFallback ? "（当前为估算，请手动确认）" : "";
-      onNotice(`识别完成：${payload.result.foodName} ${payload.result.calories} kcal ${extra}`);
+      setFoodDraft({
+        ...payload.result,
+        provider: payload.provider || payload.result.provider,
+        usedFallback: Boolean(payload.usedFallback || payload.result.usedFallback),
+      });
+      const extra = payload.usedFallback ? "，当前为基础估算" : "";
+      onNotice(`识别完成，请确认后写入饮食记录${extra}`);
     } finally {
       setRecognizingPhoto(false);
+    }
+  }
+
+  function updateFoodDraft<K extends keyof RecognizedFoodDraft>(key: K, value: RecognizedFoodDraft[K]) {
+    setFoodDraft((draft) => (draft ? { ...draft, [key]: value } : draft));
+  }
+
+  async function confirmFoodDraft() {
+    if (!foodDraft || savingMeal) return;
+    if (!foodDraft.foodName.trim() || !Number.isFinite(foodDraft.calories) || foodDraft.calories <= 0) {
+      onNotice("请确认食物名称和热量");
+      return;
+    }
+    setSavingMeal(true);
+    try {
+      const response = await fetch("/api/actions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "confirm-meal",
+          payload: {
+            ...foodDraft,
+            source: foodDraft.provider,
+          },
+        }),
+      });
+      const payload = (await response.json()) as ActionResponse;
+      if (!response.ok || !payload.state) {
+        onNotice(payload.error || "写入饮食记录失败");
+        return;
+      }
+      onState(payload.state);
+      setFoodDraft(null);
+      setPhotoHint("");
+      onNotice(payload.toast || "已写入饮食记录");
+    } finally {
+      setSavingMeal(false);
     }
   }
 
@@ -1877,46 +1940,137 @@ function QuickRecordScreen({
       <GlassCard className="p-4">
         <p className="text-[20px] font-semibold">你不用先整理好，说一句就可以</p>
         <p className="mt-2 text-[14px] text-white/72">小悦会自动整理到情绪、饮食、睡眠、小确幸或时光记。</p>
-        <div className="mt-3 rounded-[16px] border border-white/14 bg-white/7 p-3">
-          <p className="text-[15px] font-semibold">拍照识别实物热量</p>
-          <p className="mt-1 text-[12px] text-white/72">支持直接拍照识别食物热量，并自动写入饮食记录。</p>
+        <div className="mt-3 rounded-[18px] border border-white/14 bg-white/7 p-3">
+          <div className="flex items-start gap-3">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[14px] bg-white/12 text-[#ffe39e]">
+              <Camera className="h-5 w-5" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[15px] font-semibold">拍照识别实物热量</p>
+              <p className="mt-1 text-[12px] leading-5 text-white/72">
+                支持打开摄像头拍照，也可以上传相册照片。识别后先确认，再写入饮食记录。
+              </p>
+            </div>
+          </div>
           <input
-            ref={fileInputRef}
+            ref={cameraInputRef}
             type="file"
             accept="image/*"
             capture="environment"
             className="hidden"
             onChange={(event) => void onPickPhoto(event)}
           />
-          <div className="mt-2 flex gap-2">
+          <input
+            ref={albumInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(event) => void onPickPhoto(event)}
+          />
+          <input
+            value={photoHint}
+            onChange={(event) => setPhotoHint(event.target.value)}
+            placeholder="可选：补充菜名/分量，例如半碗米饭+鸡胸肉"
+            className="mt-3 w-full rounded-full border border-white/16 bg-white/8 px-3 py-2.5 text-[12px] outline-none"
+          />
+          <div className="mt-2 grid grid-cols-2 gap-2">
             <button
-              className="primary-btn h-[36px] px-4"
-              onClick={() => fileInputRef.current?.click()}
+              className="primary-btn h-[36px] px-3"
+              onClick={() => cameraInputRef.current?.click()}
               disabled={recognizingPhoto}
             >
-              {recognizingPhoto ? "识别中…" : "拍照识餐"}
+              <Camera className="h-4 w-4" />
+              {recognizingPhoto ? "识别中…" : "拍照识别"}
             </button>
-            <input
-              value={photoHint}
-              onChange={(event) => setPhotoHint(event.target.value)}
-              placeholder="可选：补充菜名（如麻辣香锅）"
-              className="min-w-0 flex-1 rounded-full border border-white/16 bg-white/8 px-3 py-2 text-[12px] outline-none"
-            />
+            <button
+              className="ghost-btn h-[36px] px-3"
+              onClick={() => albumInputRef.current?.click()}
+              disabled={recognizingPhoto}
+            >
+              <Upload className="h-4 w-4" />
+              上传照片
+            </button>
           </div>
           {photoPreviewUrl && (
-            <div className="mt-3 overflow-hidden rounded-[12px] border border-white/14">
+            <div className="mt-3 overflow-hidden rounded-[14px] border border-white/14">
               <Image
                 src={photoPreviewUrl}
                 alt="食物预览"
                 width={640}
                 height={360}
                 unoptimized
-                className="h-28 w-full object-cover"
+                className="h-32 w-full object-cover"
               />
             </div>
           )}
+          {foodDraft && (
+            <div className="mt-3 rounded-[16px] border border-white/14 bg-white/9 p-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-[13px] text-white/66">识别结果 · {foodDraft.provider || "AI 估算"}</p>
+                  <input
+                    value={foodDraft.foodName}
+                    onChange={(event) => updateFoodDraft("foodName", event.target.value)}
+                    className="mt-1 w-full rounded-[12px] border border-white/14 bg-white/8 px-3 py-2 text-[16px] font-semibold outline-none"
+                  />
+                </div>
+                <span className="shrink-0 rounded-full bg-[#ffe39e]/18 px-2 py-1 text-[11px] text-[#ffe39e]">
+                  {Math.round(foodDraft.confidence * 100)}%
+                </span>
+              </div>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <NutritionInput label="热量 kcal" value={foodDraft.calories} onChange={(value) => updateFoodDraft("calories", value)} />
+                <NutritionInput label="碳水 g" value={foodDraft.carbs} onChange={(value) => updateFoodDraft("carbs", value)} />
+                <NutritionInput label="蛋白质 g" value={foodDraft.protein} onChange={(value) => updateFoodDraft("protein", value)} />
+                <NutritionInput label="脂肪 g" value={foodDraft.fat} onChange={(value) => updateFoodDraft("fat", value)} />
+                <NutritionInput label="膳食纤维 g" value={foodDraft.fiber} onChange={(value) => updateFoodDraft("fiber", value)} />
+                <label className="block">
+                  <span className="text-[11px] text-white/62">餐别</span>
+                  <select
+                    value={foodDraft.mealType || "加餐"}
+                    onChange={(event) => updateFoodDraft("mealType", event.target.value as RecognizedFoodDraft["mealType"])}
+                    className="mt-1 w-full rounded-[12px] border border-white/14 bg-white/8 px-2 py-2 text-[13px] outline-none"
+                  >
+                    {["早餐", "午餐", "晚餐", "加餐"].map((item) => (
+                      <option key={item} value={item}>{item}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <label className="mt-2 block">
+                <span className="text-[11px] text-white/62">维生素 / 矿物质亮点</span>
+                <input
+                  value={foodDraft.vitamins}
+                  onChange={(event) => updateFoodDraft("vitamins", event.target.value)}
+                  className="mt-1 w-full rounded-[12px] border border-white/14 bg-white/8 px-3 py-2 text-[13px] outline-none"
+                />
+              </label>
+              <label className="mt-2 block">
+                <span className="text-[11px] text-white/62">营养说明</span>
+                <textarea
+                  value={foodDraft.note || ""}
+                  onChange={(event) => updateFoodDraft("note", event.target.value)}
+                  className="mt-1 min-h-16 w-full rounded-[12px] border border-white/14 bg-white/8 px-3 py-2 text-[13px] outline-none"
+                />
+              </label>
+              {foodDraft.usedFallback && (
+                <p className="mt-2 rounded-[12px] border border-amber-200/25 bg-amber-200/12 px-3 py-2 text-[12px] leading-5 text-amber-100">
+                  当前视觉模型未配置，结果为基础估算。你可以先手动修正，再写入记录。
+                </p>
+              )}
+              <div className="mt-3 grid grid-cols-[1fr_auto] gap-2">
+                <button className="primary-btn h-[38px] justify-center" onClick={() => void confirmFoodDraft()} disabled={savingMeal}>
+                  <CheckCircle2 className="h-4 w-4" />
+                  {savingMeal ? "写入中…" : "确认写入饮食记录"}
+                </button>
+                <button className="ghost-btn h-[38px] px-3" onClick={() => setFoodDraft(null)}>
+                  重拍
+                </button>
+              </div>
+            </div>
+          )}
         </div>
-        <div className="mt-3 grid grid-cols-2 gap-2">
+        <div className="mt-3 grid grid-cols-3 gap-2">
           {categories.map((item) => {
             const Icon = item.icon;
             const active = category === item.key;
@@ -1924,13 +2078,13 @@ function QuickRecordScreen({
               <button
                 key={item.key}
                 className={clsx(
-                  "flex items-center gap-2 rounded-[14px] border px-3 py-2 text-left text-[13px]",
+                  "flex min-h-[42px] items-center gap-1.5 rounded-[13px] border px-2 py-2 text-left text-[12px] leading-tight",
                   active ? "border-[#c0adff] bg-[#a58bff]/22" : "border-white/14 bg-white/7",
                 )}
                 onClick={() => setCategory(item.key)}
               >
-                <Icon className="h-4 w-4 text-[#ffe39e]" />
-                <span>{item.label}</span>
+                <Icon className="h-3.5 w-3.5 shrink-0 text-[#ffe39e]" />
+                <span className="min-w-0">{item.label}</span>
               </button>
             );
           })}
@@ -1939,7 +2093,7 @@ function QuickRecordScreen({
           value={text}
           onChange={(event) => setText(event.target.value)}
           placeholder="比如：今天同事夸我了 / 晚饭吃了炸鸡 / 今晚又睡不着"
-          className="mt-3 min-h-28 w-full rounded-[18px] border border-white/18 bg-white/8 p-3 text-[14px] outline-none"
+          className="mt-3 min-h-24 w-full rounded-[18px] border border-white/18 bg-white/8 p-3 text-[14px] outline-none"
         />
         <button className="primary-btn mt-3 w-full justify-center" onClick={() => void submit()}>交给小悦记录</button>
       </GlassCard>
@@ -1950,6 +2104,29 @@ function QuickRecordScreen({
         </GlassCard>
       )}
     </div>
+  );
+}
+
+function NutritionInput({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <label className="block">
+      <span className="text-[11px] text-white/62">{label}</span>
+      <input
+        type="number"
+        min={0}
+        value={Number.isFinite(value) ? value : 0}
+        onChange={(event) => onChange(Number(event.target.value))}
+        className="mt-1 w-full rounded-[12px] border border-white/14 bg-white/8 px-3 py-2 text-[13px] outline-none"
+      />
+    </label>
   );
 }
 
@@ -3373,13 +3550,13 @@ function SubHeader({
   onBack?: () => void;
 }) {
   return (
-    <header className="space-y-3 pb-1">
+    <header className="sub-header space-y-2 pb-1">
       <button className="icon-btn" aria-label="返回" onClick={onBack ?? (() => useAppStore.getState().setScreen("home", "home"))}>
         <ArrowLeft className="h-5 w-5" />
       </button>
-      <div>
-        <h1 className="text-[28px] font-semibold leading-tight">{title}</h1>
-        <p className="text-[14px] text-white/70">{source}</p>
+      <div className="min-w-0">
+        <h1 className="text-[24px] font-semibold leading-tight">{title}</h1>
+        <p className="text-[13px] text-white/70">{source}</p>
       </div>
     </header>
   );
