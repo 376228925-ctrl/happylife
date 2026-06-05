@@ -5,8 +5,25 @@
   --foreground: #ffffff;
 }
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 body {
   margin: 0;
+  width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
   background: var(--background);
   color: var(--foreground);
   font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
@@ -171,6 +188,9 @@ body {
 
 .phone-shell {
   background: var(--theme-shell);
+  width: min(100%, 430px);
+  max-width: 100%;
+  min-width: 0;
 }
 
 button {
@@ -179,6 +199,9 @@ button {
 
 .app-frame {
   min-height: 100vh;
+  width: 100%;
+  min-width: 0;
+  overflow-x: clip;
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -211,6 +234,8 @@ button {
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.22);
   font-size: 13px;
+  min-width: 0;
+  white-space: nowrap;
 }
 
 .primary-btn {
@@ -244,6 +269,93 @@ button {
   background:
     radial-gradient(58% 58% at 80% 35%, rgba(255, 207, 128, 0.18) 0%, transparent 75%),
     var(--theme-hero);
+}
+
+.content-scroll,
+.screen-stack,
+.mobile-safe {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.content-scroll {
+  overflow-x: clip;
+}
+
+.mobile-safe * {
+  min-width: 0;
+}
+
+.mobile-safe img,
+.mobile-safe svg,
+.mobile-safe canvas,
+.mobile-safe video {
+  max-width: 100%;
+}
+
+.responsive-title {
+  font-size: clamp(20px, 6.1vw, 25px);
+}
+
+.responsive-section-title {
+  font-size: clamp(17px, 4.7vw, 19px);
+}
+
+.responsive-body {
+  font-size: clamp(12px, 3.55vw, 15px);
+}
+
+.hero-copy {
+  width: min(62%, 245px);
+}
+
+.media-copy {
+  width: min(60%, 245px);
+}
+
+.status-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 1px minmax(0, 1fr) 1px minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(6px, 2vw, 10px);
+}
+
+.plan-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.surprise-card {
+  padding-right: clamp(112px, 34vw, 160px) !important;
+}
+
+.surprise-cta {
+  right: clamp(12px, 4vw, 18px);
+  bottom: 18px;
+}
+
+.surprise-gift {
+  right: clamp(64px, 20vw, 96px);
+  bottom: 14px;
+}
+
+.summary-header {
+  gap: 10px;
+}
+
+.summary-header button {
+  max-width: 42%;
+  overflow: hidden;
+  flex-shrink: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bottom-nav-wrap,
+.bottom-nav,
+.bottom-nav button {
+  min-width: 0;
 }
 
 .hero-photo-card {
@@ -547,12 +659,13 @@ button {
 
 @media (max-width: 430px) {
   .phone-shell {
-    max-width: 100vw;
+    width: 100dvw;
+    max-width: 100dvw;
   }
 
   .phone-shell .no-scrollbar {
-    padding-left: 14px !important;
-    padding-right: 14px !important;
+    padding-left: clamp(10px, 3.6vw, 14px) !important;
+    padding-right: clamp(10px, 3.6vw, 14px) !important;
   }
 
   .phone-shell .glass-card {
@@ -560,7 +673,7 @@ button {
   }
 
   .phone-shell .hero-card {
-    min-height: 204px !important;
+    min-height: clamp(188px, 52vw, 214px) !important;
     border-radius: 22px;
     padding: 14px;
   }
@@ -570,7 +683,7 @@ button {
   .phone-shell [class*="min-h-[272px]"],
   .phone-shell [class*="min-h-[258px]"],
   .phone-shell [class*="min-h-[236px]"] {
-    min-height: 204px !important;
+    min-height: clamp(188px, 52vw, 214px) !important;
   }
 
   .phone-shell [class*="text-[42px]"] { font-size: 31px !important; }
@@ -591,11 +704,36 @@ button {
   .phone-shell .ghost-btn,
   .phone-shell .small-btn {
     min-height: 34px;
-    padding-left: 11px;
-    padding-right: 11px;
-    font-size: 12px;
+    padding-left: clamp(9px, 3vw, 11px);
+    padding-right: clamp(9px, 3vw, 11px);
+    font-size: clamp(11px, 3.2vw, 12px);
     gap: 5px;
     white-space: nowrap;
+  }
+
+  .phone-shell .hero-copy {
+    width: min(64%, 230px);
+  }
+
+  .phone-shell .media-copy {
+    width: min(64%, 220px);
+  }
+
+  .phone-shell .status-grid {
+    gap: 6px;
+  }
+
+  .phone-shell .status-grid > div:not(.status-divider) {
+    min-width: 0;
+  }
+
+  .phone-shell .status-grid [class*="h-10"][class*="w-10"] {
+    width: 34px !important;
+    height: 34px !important;
+  }
+
+  .phone-shell .surprise-card {
+    padding-right: clamp(110px, 34vw, 136px) !important;
   }
 
   .phone-shell .tool-btn {
@@ -605,11 +743,11 @@ button {
 
   .phone-shell .bottom-nav {
     border-radius: 24px;
-    padding: 8px 8px 9px;
+    padding: 8px clamp(4px, 2vw, 8px) 9px;
   }
 
   .phone-shell .bottom-nav button {
-    font-size: 11px !important;
+    font-size: clamp(10px, 2.9vw, 11px) !important;
     gap: 2px;
   }
 
@@ -637,6 +775,42 @@ button {
     width: 86px;
     height: 86px;
     font-size: 31px;
+  }
+}
+
+@media (max-width: 380px) {
+  .phone-shell .hero-copy {
+    width: 68%;
+  }
+
+  .phone-shell .media-copy {
+    width: 68%;
+  }
+
+  .phone-shell .status-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .phone-shell .status-grid > .status-divider {
+    display: none;
+  }
+
+  .phone-shell .summary-header button,
+  .phone-shell .voice-play-label {
+    display: none;
+  }
+
+  .phone-shell .surprise-card {
+    padding-right: 102px !important;
+  }
+
+  .phone-shell .surprise-gift {
+    right: 56px;
+  }
+
+  .phone-shell .bottom-nav button[aria-label="快速记录"] span {
+    width: 50px !important;
+    height: 50px !important;
   }
 }
 

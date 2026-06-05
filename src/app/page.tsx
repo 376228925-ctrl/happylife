@@ -446,7 +446,7 @@ export default function Page() {
             "md:my-4 md:h-[calc(100dvh-2rem)] md:rounded-[38px] md:border md:border-white/12 md:shadow-2xl",
           )}
         >
-          <div className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-4 pb-[calc(26px+env(safe-area-inset-bottom))] pt-[max(16px,env(safe-area-inset-top))]">
+          <div className="content-scroll no-scrollbar min-h-0 flex-1 overflow-y-auto px-4 pb-[calc(26px+env(safe-area-inset-bottom))] pt-[max(16px,env(safe-area-inset-top))]">
             <AuthScreen onAuthenticated={finishAuth} onNotice={showToast} />
           </div>
           <AnimatePresence>
@@ -478,11 +478,12 @@ export default function Page() {
       >
         <div
           ref={contentRef}
-          className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-4 pb-[calc(128px+env(safe-area-inset-bottom))] pt-[max(16px,env(safe-area-inset-top))]"
+          className="content-scroll no-scrollbar min-h-0 flex-1 overflow-y-auto px-4 pb-[calc(128px+env(safe-area-inset-bottom))] pt-[max(16px,env(safe-area-inset-top))]"
         >
           <AnimatePresence mode="wait">
             <motion.div
               key={screen}
+              className="screen-stack"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
@@ -1032,7 +1033,7 @@ function HomeScreen({
         ? "新的一天慢慢来，小悦会陪你把节奏照顾好✨"
         : "把生活调成柔软的粉色，小悦陪你慢慢呼吸✨";
   return (
-    <div className="space-y-3 pb-2">
+    <div className="mobile-safe space-y-3 pb-2">
       <div className="flex items-center justify-between px-1">
         <button className="icon-btn" aria-label="菜单" onClick={() => onNavigate("my", "my")}>
           <Sparkles className="h-5 w-5" />
@@ -1053,25 +1054,25 @@ function HomeScreen({
         />
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,18,61,.42)_0%,rgba(10,18,61,.28)_56%,rgba(10,18,61,.22)_100%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(90%_90%_at_14%_28%,rgba(10,18,61,.68)_0%,rgba(10,18,61,.4)_45%,rgba(10,18,61,0)_100%)]" />
-        <div className="relative z-10 max-w-[58%] p-1">
-          <h1 className="text-[25px] font-semibold leading-tight tracking-normal">{greeting}</h1>
-          <p className="mt-2.5 text-[15px] leading-[1.62] text-white/90">{greetingDesc}</p>
+        <div className="hero-copy relative z-10 p-1">
+          <h1 className="responsive-title font-semibold leading-tight tracking-normal">{greeting}</h1>
+          <p className="responsive-body mt-2.5 leading-[1.62] text-white/90">{greetingDesc}</p>
         </div>
       </section>
 
       <GlassCard onClick={() => onNavigate("health-overview")} className="px-4 py-4">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-[18px] font-semibold">今日状态 ✨</h2>
-          <span className="inline-flex items-center gap-1 text-[12px] text-white/72">
+          <h2 className="responsive-section-title font-semibold">今日状态 ✨</h2>
+          <span className="inline-flex shrink-0 items-center gap-1 text-[12px] text-white/72">
             查看身心健康总览
             <ChevronRight className="h-3.5 w-3.5" />
           </span>
         </div>
-        <div className="grid grid-cols-[1fr_1px_1fr_1px_1fr] items-center gap-2">
+        <div className="status-grid">
           <StatusInline icon={<Moon className="h-4 w-4" />} label="睡眠" value={`${state.today.sleepHours}h`} progress={66} />
-          <div className="h-12 bg-white/14" />
+          <div className="status-divider h-12 bg-white/14" />
           <StatusInline icon={<Heart className="h-4 w-4" />} label="情绪" value={state.today.moodLabel} />
-          <div className="h-12 bg-white/14" />
+          <div className="status-divider h-12 bg-white/14" />
           <StatusInline icon={<Sparkles className="h-4 w-4" />} label="压力" value={`${state.today.stress}%`} progress={state.today.stress} progressColor="bg-[#8de67b]" />
         </div>
       </GlassCard>
@@ -1088,10 +1089,10 @@ function HomeScreen({
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(12,19,63,.36)_0%,rgba(12,19,63,.2)_100%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(88%_90%_at_20%_34%,rgba(12,19,63,.74)_0%,rgba(12,19,63,.44)_48%,rgba(12,19,63,0)_100%)]" />
         <div className="relative z-10">
-        <p className="text-[18px] font-semibold">{mode === "night" ? "AI 今晚建议 ✨" : "AI 今日建议 ✨"}</p>
-        <h3 className="mt-2 max-w-[56%] text-[18px] leading-[1.5] font-semibold">{primarySuggestion.title}</h3>
-        <p className="mt-2 max-w-[58%] text-[13px] leading-6 text-white/82">{primarySuggestion.message}</p>
-        <div className="mt-4 flex gap-2">
+        <p className="responsive-section-title font-semibold">{mode === "night" ? "AI 今晚建议 ✨" : "AI 今日建议 ✨"}</p>
+        <h3 className="media-copy mt-2 text-[18px] leading-[1.5] font-semibold">{primarySuggestion.title}</h3>
+        <p className="media-copy mt-2 text-[13px] leading-6 text-white/82">{primarySuggestion.message}</p>
+        <div className="mt-4 flex flex-wrap gap-2">
           <button className="primary-btn" onClick={() => onNavigate("ai-suggestion")}>开始放松</button>
           <button className="ghost-btn" onClick={() => onNavigate("companion", "companion")}>找小悦聊聊</button>
         </div>
@@ -1112,7 +1113,7 @@ function HomeScreen({
           {state.plans.map((plan) => (
             <button
               key={plan.id}
-              className="flex w-full items-center gap-2 rounded-[12px] border border-white/10 bg-white/6 px-3 py-2 text-left"
+              className="plan-row w-full items-center gap-2 rounded-[12px] border border-white/10 bg-white/6 px-3 py-2 text-left"
               onClick={() => void onAction("toggle-plan", { planId: plan.id })}
             >
               {plan.done ? (
@@ -1120,22 +1121,22 @@ function HomeScreen({
               ) : (
                 <Circle className="h-4 w-4 shrink-0 text-white/58" />
               )}
-              <span className={clsx("text-[13px]", plan.done && "text-white/58 line-through")}>{plan.title}</span>
-              <span className="ml-auto text-[11px] text-white/48">{plan.category}</span>
+              <span className={clsx("text-[13px] leading-5", plan.done && "text-white/58 line-through")}>{plan.title}</span>
+              <span className="text-[11px] text-white/48">{plan.category}</span>
             </button>
           ))}
         </div>
       </GlassCard>
 
       <GlassCard
-        className="relative overflow-hidden px-4 py-4"
+        className="surprise-card relative overflow-hidden px-4 py-4"
         onClick={() => {
           void onAction("open-surprise");
           onNavigate("memories", "memories");
         }}
       >
-        <div className="absolute right-24 bottom-2 h-12 w-12 rounded-[14px] bg-[radial-gradient(circle,#ffd79f_5%,#cf9bff_56%,#805bff_100%)] shadow-[0_0_24px_rgba(205,156,255,.58)]" />
-        <div className="absolute right-16 bottom-3 h-8 w-20 rounded-full bg-[linear-gradient(135deg,#9f82ff,#d98fff)] px-4 py-1 text-[12px] font-semibold">打开看看</div>
+        <div className="surprise-gift absolute h-12 w-12 rounded-[14px] bg-[radial-gradient(circle,#ffd79f_5%,#cf9bff_56%,#805bff_100%)] shadow-[0_0_24px_rgba(205,156,255,.58)]" />
+        <div className="surprise-cta absolute h-8 rounded-full bg-[linear-gradient(135deg,#9f82ff,#d98fff)] px-4 py-1 text-[12px] font-semibold whitespace-nowrap">打开看看</div>
         <p className="text-[18px] font-semibold">今晚有一份小惊喜 ⭐</p>
         <p className="mt-2 text-[14px] text-white/75">一份特别的礼物已为你准备好</p>
       </GlassCard>
@@ -1159,15 +1160,15 @@ function HomeScreen({
               }
             }}
           >
-            <Play className="h-4 w-4" />
-            播放
+            <Play className="h-4 w-4 shrink-0" />
+            <span className="voice-play-label">播放</span>
           </button>
         </div>
       </GlassCard>
 
       <GlassCard className="px-4 py-4">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-[18px] font-semibold">🌙 晚间回顾 · 今日总结</h2>
+        <div className="summary-header mb-3 flex items-center justify-between">
+          <h2 className="responsive-section-title min-w-0 font-semibold">🌙 晚间回顾 · 今日总结</h2>
           <button className="text-[12px] text-white/70" onClick={() => onNavigate("memories", "memories")}>查看今日时光记</button>
         </div>
         <div className="grid grid-cols-3 gap-2 text-center">
@@ -2174,7 +2175,7 @@ function MemoriesScreen({
         </div>
       </GlassCard>
 
-      <div className="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+      <div className="grid grid-cols-2 gap-2 min-[410px]:grid-cols-3">
         {[
           ["日记", "记录每一天", "📔", "memory-journal"],
           ["回忆", "珍贵回忆相册", "🖼️", "memory-gallery"],
@@ -2184,7 +2185,7 @@ function MemoriesScreen({
         ].map(([title, subtitle, icon, route]) => (
           <GlassCard
             key={title}
-            className="w-[122px] shrink-0 px-3 py-3 text-left"
+            className="min-h-[116px] px-3 py-3 text-left"
             onClick={() => onNavigate(route as Screen, "memories")}
           >
             <p className="text-[26px] leading-none">{icon}</p>
@@ -2199,9 +2200,9 @@ function MemoriesScreen({
           <p className="text-[18px] font-semibold">最近的时光 ⭐</p>
           <button className="text-[13px] text-white/72" onClick={() => onNavigate("all-memories", "memories")}>全部记录</button>
         </div>
-        <div className="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+        <div className="grid grid-cols-1 gap-2 min-[390px]:grid-cols-2">
           {memories.slice(0, 3).map((item, index) => (
-            <div key={item.id} className="w-[190px] shrink-0 overflow-hidden rounded-[14px] border border-white/12 bg-white/8">
+            <div key={item.id} className="overflow-hidden rounded-[14px] border border-white/12 bg-white/8">
               <div className="relative h-28">
                 <Image
                   src={index === 0 ? "/image2/thumb-nightwalk.png" : index === 1 ? "/image2/thumb-cake.png" : "/image2/thumb-sunset.png"}
@@ -2222,8 +2223,8 @@ function MemoriesScreen({
       </GlassCard>
 
       <GlassCard className="relative overflow-hidden px-4 py-4">
-        <Image src="/image2/reco-voice-2.png" alt="整理回忆的小悦" width={396} height={320} className="pointer-events-none absolute -left-14 bottom-[-55px] h-auto w-[44%] opacity-95" />
-        <div className="ml-[34%]">
+        <Image src="/image2/reco-voice-2.png" alt="整理回忆的小悦" width={396} height={320} className="pointer-events-none absolute left-0 bottom-[-42px] h-auto w-[34%] opacity-95" />
+        <div className="ml-[30%] min-w-0">
           <p className="text-[24px] font-semibold">想让我帮你整理今天的回忆吗？</p>
           <p className="mt-1 text-[13px] text-white/74">我会为你挑选重要瞬间，写成温暖的篇章 ✨</p>
           <div className="mt-3 flex gap-2">
@@ -3068,7 +3069,7 @@ function MyScreen({
           <SummaryCell label="健康币" value="1,230" />
           <SummaryCell label="幸福值" value="9,888" />
         </div>
-        <div className="pointer-events-none absolute -right-5 -bottom-5 h-20 w-20 rounded-full border border-white/18 bg-[radial-gradient(circle,#ffd89f_8%,#d4a2ff_52%,#8765ff_100%)] opacity-35 shadow-[0_0_32px_rgba(204,154,255,.45)]" />
+        <div className="pointer-events-none absolute right-0 bottom-0 h-16 w-16 translate-x-1/4 translate-y-1/4 rounded-full border border-white/18 bg-[radial-gradient(circle,#ffd89f_8%,#d4a2ff_52%,#8765ff_100%)] opacity-35 shadow-[0_0_32px_rgba(204,154,255,.45)]" />
       </GlassCard>
 
       {menus.map((item) => (
@@ -3577,8 +3578,8 @@ function BottomNav({
     { tab: "my", label: "我的", icon: User, screen: "my" as Screen },
   ];
   return (
-    <div className="absolute inset-x-0 bottom-0 z-30 px-2 pb-[max(8px,env(safe-area-inset-bottom))]">
-      <nav className="bottom-nav grid grid-cols-5 rounded-[30px] border border-white/14 bg-[#18235f]/90 px-2 py-3 shadow-[0_14px_26px_rgba(7,12,44,.45)] backdrop-blur-xl">
+    <div className="bottom-nav-wrap absolute inset-x-0 bottom-0 z-30 px-2 pb-[max(8px,env(safe-area-inset-bottom))]">
+      <nav className="bottom-nav grid w-full grid-cols-5 rounded-[30px] border border-white/14 bg-[#18235f]/90 px-2 py-3 shadow-[0_14px_26px_rgba(7,12,44,.45)] backdrop-blur-xl">
         {items.map((item) => {
           const Icon = item.icon;
           return (
@@ -3586,7 +3587,7 @@ function BottomNav({
               key={item.tab}
               aria-label={item.label || "快速记录"}
               className={clsx(
-                "flex flex-col items-center gap-1 text-[12px] text-white/78",
+                "flex min-w-0 flex-col items-center gap-1 overflow-visible text-[12px] text-white/78",
                 item.tab === "plus" && "-mt-8",
                 activeTab === item.tab && "text-white",
               )}
@@ -3595,7 +3596,7 @@ function BottomNav({
               <span className={clsx(item.tab === "plus" ? "grid h-16 w-16 place-items-center rounded-full bg-gradient-to-br from-[#c7b4ff] to-[#6f56ff] shadow-[0_0_30px_rgba(160,130,255,.68)]" : "grid h-8 w-8 place-items-center")}>
                 <Icon className={clsx(item.tab === "plus" ? "h-8 w-8" : "h-5 w-5")} />
               </span>
-              {item.label && item.label}
+              {item.label && <span className="max-w-full truncate">{item.label}</span>}
             </button>
           );
         })}
