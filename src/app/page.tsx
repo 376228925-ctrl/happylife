@@ -262,8 +262,11 @@ export default function Page() {
       const viewport = window.visualViewport;
       const width = Math.floor(viewport?.width || window.innerWidth || root.clientWidth);
       const height = Math.floor(viewport?.height || window.innerHeight || root.clientHeight);
+      const scale = viewport?.scale || 1;
       root.style.setProperty("--app-vvw", `${width}px`);
       root.style.setProperty("--app-vvh", `${height}px`);
+      root.style.setProperty("--app-vscale", `${scale}`);
+      root.dataset.appCompact = width <= 375 || scale > 1.05 ? "true" : "false";
     };
 
     syncViewport();
@@ -277,6 +280,8 @@ export default function Page() {
       window.visualViewport?.removeEventListener("scroll", syncViewport);
       root.style.removeProperty("--app-vvw");
       root.style.removeProperty("--app-vvh");
+      root.style.removeProperty("--app-vscale");
+      delete root.dataset.appCompact;
     };
   }, []);
 
@@ -496,7 +501,7 @@ export default function Page() {
       <NightBackdrop mode={mode} />
       <div
         className={clsx(
-          "phone-shell relative mx-auto flex h-[100dvh] w-full max-w-[430px] flex-col overflow-hidden text-white",
+          "phone-shell has-bottom-nav relative mx-auto flex h-[100dvh] w-full max-w-[430px] flex-col overflow-hidden text-white",
           "md:my-4 md:h-[calc(100dvh-2rem)] md:rounded-[38px] md:border md:border-white/12 md:shadow-2xl",
         )}
       >
@@ -1123,7 +1128,7 @@ function HomeScreen({
         </div>
       </GlassCard>
 
-      <GlassCard className="px-4 py-4">
+      <GlassCard className="home-plan-card px-4 py-4">
         <div className="mb-2 flex items-center justify-between">
           <div>
             <p className="text-[18px] font-semibold">今日计划</p>
@@ -1576,7 +1581,7 @@ function CompanionScreen({
           {thinking ? "正在回应" : connectionTag}
         </span>
       </div>
-      <div className="max-h-[330px] space-y-2 overflow-y-auto pr-1">
+      <div className="chat-thread space-y-2 overflow-y-auto pr-1">
         {state.chat.slice(-6).map((message) => (
           <div
             key={message.id}
@@ -1662,7 +1667,7 @@ function CompanionScreen({
   );
 
   return (
-    <div className="space-y-3 pb-2">
+    <div className="mobile-safe space-y-3 pb-2">
       <div className="flex items-center justify-between px-1">
         <button className="icon-btn" aria-label="返回" onClick={() => useAppStore.getState().setScreen("home", "home")}>
           <ArrowLeft className="h-5 w-5" />
@@ -1688,7 +1693,7 @@ function CompanionScreen({
 
       {chatPanel}
 
-      <GlassCard className="px-4 py-4">
+      <GlassCard className="companion-secondary-cta px-4 py-4">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <span className="grid h-12 w-12 place-items-center rounded-full bg-[radial-gradient(circle,#ffc7cf_0%,#b08fff_75%)] text-[#fff9f8]">
@@ -2170,7 +2175,7 @@ function MemoriesScreen({
   const glowValue = 680 + memories.length * 8;
 
   return (
-    <div className="space-y-3 pb-2">
+    <div className="mobile-safe space-y-3 pb-2">
       <section className="hero-card min-h-[286px]">
         <Image src="/image2/memories-hero.png" alt="时光记小悦" width={432} height={300} className="pointer-events-none absolute inset-0 z-0 h-full w-full object-cover object-right" />
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,18,61,.42)_0%,rgba(10,18,61,.28)_56%,rgba(10,18,61,.22)_100%)]" />
@@ -3011,7 +3016,7 @@ function MyScreen({
   }
 
   return (
-    <div className="space-y-3 pb-2">
+    <div className="mobile-safe space-y-3 pb-2">
       <section className="hero-card min-h-[286px]">
         <Image src="/image2/my-hero.png" alt="我的页小悦" width={460} height={280} className="pointer-events-none absolute inset-0 z-0 h-full w-full object-cover object-right" />
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,18,61,.42)_0%,rgba(10,18,61,.28)_56%,rgba(10,18,61,.22)_100%)]" />
@@ -3602,8 +3607,8 @@ function BottomNav({
     { tab: "my", label: "我的", icon: User, screen: "my" as Screen },
   ];
   return (
-    <div className="bottom-nav-wrap absolute inset-x-0 bottom-0 z-30 px-2 pb-[max(8px,env(safe-area-inset-bottom))]">
-      <nav className="bottom-nav grid w-full grid-cols-5 rounded-[30px] border border-white/14 bg-[#18235f]/90 px-2 py-3 shadow-[0_14px_26px_rgba(7,12,44,.45)] backdrop-blur-xl">
+    <div className="bottom-nav-wrap z-30 shrink-0">
+      <nav className="bottom-nav grid w-full grid-cols-5 rounded-[30px] border border-white/14 bg-[#18235f]/90 shadow-[0_14px_26px_rgba(7,12,44,.45)] backdrop-blur-xl">
         {items.map((item) => {
           const Icon = item.icon;
           return (
@@ -3611,16 +3616,16 @@ function BottomNav({
               key={item.tab}
               aria-label={item.label || "快速记录"}
               className={clsx(
-                "flex min-w-0 flex-col items-center gap-1 overflow-visible text-[12px] text-white/78",
-                item.tab === "plus" && "-mt-8",
+                "nav-item flex min-w-0 flex-col items-center gap-1 overflow-visible text-[12px] text-white/78",
+                item.tab === "plus" && "nav-item-plus",
                 activeTab === item.tab && "text-white",
               )}
               onClick={() => onNavigate(item.screen, item.tab as Tab)}
             >
-              <span className={clsx(item.tab === "plus" ? "grid h-16 w-16 place-items-center rounded-full bg-gradient-to-br from-[#c7b4ff] to-[#6f56ff] shadow-[0_0_30px_rgba(160,130,255,.68)]" : "grid h-8 w-8 place-items-center")}>
-                <Icon className={clsx(item.tab === "plus" ? "h-8 w-8" : "h-5 w-5")} />
+              <span className={clsx(item.tab === "plus" ? "nav-plus-circle grid place-items-center rounded-full bg-gradient-to-br from-[#c7b4ff] to-[#6f56ff] shadow-[0_0_30px_rgba(160,130,255,.68)]" : "nav-icon-wrap grid place-items-center")}>
+                <Icon className={clsx(item.tab === "plus" ? "nav-plus-icon" : "nav-icon")} />
               </span>
-              {item.label && <span className="max-w-full truncate">{item.label}</span>}
+              {item.label && <span className="nav-label max-w-full truncate">{item.label}</span>}
             </button>
           );
         })}

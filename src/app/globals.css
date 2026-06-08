@@ -5,6 +5,14 @@
   --foreground: #ffffff;
   --app-vvw: 100vw;
   --app-vvh: 100dvh;
+  --app-vscale: 1;
+  --content-x: clamp(12px, 3.6vw, 16px);
+  --screen-gap: clamp(10px, 3vw, 14px);
+  --card-pad: clamp(12px, 3.7vw, 16px);
+  --nav-height: clamp(70px, 18vw, 82px);
+  --nav-plus-size: clamp(54px, 15vw, 64px);
+  --nav-lift: calc(var(--nav-plus-size) * 0.38);
+  --nav-space: calc(var(--nav-height) + var(--nav-lift) + 10px);
 }
 
 *,
@@ -31,6 +39,7 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  overscroll-behavior-x: none;
 }
 
 .theme-night {
@@ -194,7 +203,11 @@ body {
   background: var(--theme-shell);
   width: min(100%, var(--app-vvw), 430px);
   max-width: min(100%, var(--app-vvw), 430px);
+  height: min(100dvh, var(--app-vvh));
+  max-height: min(100dvh, var(--app-vvh));
   min-width: 0;
+  contain: layout paint;
+  touch-action: manipulation;
 }
 
 button {
@@ -287,16 +300,39 @@ button {
 .content-scroll {
   max-width: min(100%, var(--app-vvw));
   overflow-x: clip;
+  overscroll-behavior-x: contain;
+}
+
+.has-bottom-nav .content-scroll {
+  padding-bottom: var(--screen-gap) !important;
 }
 
 .mobile-safe * {
   min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .mobile-safe img,
 .mobile-safe svg,
 .mobile-safe canvas,
 .mobile-safe video {
+  max-width: 100%;
+}
+
+.phone-shell .mobile-safe.space-y-3 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: var(--screen-gap) !important;
+}
+
+.phone-shell .mobile-safe .flex {
+  min-width: 0;
+}
+
+.phone-shell .mobile-safe p,
+.phone-shell .mobile-safe h1,
+.phone-shell .mobile-safe h2,
+.phone-shell .mobile-safe h3,
+.phone-shell .mobile-safe span,
+.phone-shell .mobile-safe button {
   max-width: 100%;
 }
 
@@ -368,6 +404,58 @@ button {
 .bottom-nav-wrap {
   width: min(100%, var(--app-vvw), 430px);
   margin-inline: auto;
+  padding: calc(var(--nav-lift) + 2px) var(--content-x) max(8px, env(safe-area-inset-bottom));
+  pointer-events: auto;
+}
+
+.bottom-nav {
+  position: relative;
+  height: var(--nav-height);
+  align-items: end;
+  overflow: visible;
+  padding: 8px clamp(5px, 1.8vw, 8px) 9px;
+  pointer-events: auto;
+}
+
+.bottom-nav .nav-item {
+  position: relative;
+  height: 52px;
+  justify-content: end;
+  line-height: 1.15;
+}
+
+.bottom-nav .nav-item-plus {
+  justify-content: end;
+}
+
+.bottom-nav .nav-icon-wrap {
+  width: clamp(26px, 7.2vw, 32px);
+  height: clamp(26px, 7.2vw, 32px);
+}
+
+.bottom-nav .nav-icon {
+  width: clamp(18px, 5vw, 22px);
+  height: clamp(18px, 5vw, 22px);
+}
+
+.bottom-nav .nav-plus-circle {
+  position: absolute;
+  top: calc(var(--nav-plus-size) * -0.38);
+  left: 50%;
+  width: var(--nav-plus-size);
+  height: var(--nav-plus-size);
+  transform: translateX(-50%);
+}
+
+.bottom-nav .nav-plus-icon {
+  width: clamp(25px, 7vw, 31px);
+  height: clamp(25px, 7vw, 31px);
+}
+
+.bottom-nav .nav-label {
+  font-size: clamp(10px, 2.9vw, 12px);
+  line-height: 1.15;
+  white-space: nowrap;
 }
 
 .hero-photo-card {
@@ -644,6 +732,14 @@ button {
   border-color: color-mix(in srgb, var(--theme-text) 16%, transparent);
 }
 
+.companion-chat-panel .chat-thread {
+  max-height: clamp(172px, 30dvh, 258px);
+}
+
+.companion-secondary-cta {
+  display: none;
+}
+
 .theme-sunrise .chat-bubble-assistant,
 .theme-blossom .chat-bubble-assistant {
   background: rgba(255, 255, 255, 0.48);
@@ -676,12 +772,13 @@ button {
   }
 
   .phone-shell .no-scrollbar {
-    padding-left: clamp(10px, 3.6vw, 14px) !important;
-    padding-right: clamp(10px, 3.6vw, 14px) !important;
+    padding-left: var(--content-x) !important;
+    padding-right: var(--content-x) !important;
   }
 
   .phone-shell .glass-card {
     border-radius: 20px !important;
+    padding: var(--card-pad) !important;
   }
 
   .phone-shell .hero-card {
@@ -711,16 +808,29 @@ button {
   .phone-shell [class*="text-[22px]"] { font-size: clamp(17px, 4.8vw, 19px) !important; }
   .phone-shell [class*="text-[20px]"] { font-size: clamp(16px, 4.5vw, 18px) !important; }
   .phone-shell [class*="text-[18px]"] { font-size: clamp(15px, 4vw, 16px) !important; }
+  .phone-shell [class*="text-[17px]"] { font-size: clamp(14px, 3.8vw, 15.5px) !important; }
+  .phone-shell [class*="text-[16px]"] { font-size: clamp(13.5px, 3.65vw, 15px) !important; }
+  .phone-shell [class*="text-[15px]"] { font-size: clamp(13px, 3.5vw, 14px) !important; }
+  .phone-shell [class*="text-[14px]"] { font-size: clamp(12px, 3.25vw, 13px) !important; }
+  .phone-shell [class*="text-[13px]"] { font-size: clamp(11.5px, 3.05vw, 12px) !important; }
+  .phone-shell [class*="text-[12px]"] { font-size: clamp(10.5px, 2.8vw, 11px) !important; }
+  .phone-shell [class*="text-[11px]"] { font-size: clamp(10px, 2.65vw, 10.5px) !important; }
+  .phone-shell [class*="text-[10px]"] { font-size: 10px !important; }
 
   .phone-shell .primary-btn,
   .phone-shell .ghost-btn,
   .phone-shell .small-btn {
-    min-height: 34px;
+    min-height: clamp(31px, 8.7vw, 35px);
     padding-left: clamp(9px, 3vw, 11px);
     padding-right: clamp(9px, 3vw, 11px);
     font-size: clamp(11px, 3.2vw, 12px);
     gap: 5px;
     white-space: nowrap;
+  }
+
+  .phone-shell .icon-btn {
+    width: clamp(34px, 9.8vw, 40px);
+    height: clamp(34px, 9.8vw, 40px);
   }
 
   .phone-shell .hero-copy {
@@ -754,8 +864,7 @@ button {
   }
 
   .phone-shell .bottom-nav {
-    border-radius: 24px;
-    padding: 8px clamp(4px, 2vw, 8px) 9px;
+    border-radius: clamp(22px, 6.2vw, 28px);
   }
 
   .phone-shell .bottom-nav button {
@@ -764,12 +873,12 @@ button {
   }
 
   .phone-shell .bottom-nav button[aria-label="快速记录"] {
-    margin-top: -24px;
+    margin-top: 0;
   }
 
   .phone-shell .bottom-nav button[aria-label="快速记录"] span {
-    width: 54px !important;
-    height: 54px !important;
+    width: var(--nav-plus-size) !important;
+    height: var(--nav-plus-size) !important;
   }
 
   .phone-shell .bottom-nav button[aria-label="快速记录"] svg {
@@ -780,7 +889,7 @@ button {
   .phone-shell input,
   .phone-shell textarea,
   .phone-shell select {
-    font-size: 13px !important;
+    font-size: max(13px, 16px) !important;
   }
 
   .phone-shell .ring-score {
@@ -791,6 +900,14 @@ button {
 }
 
 @media (max-width: 380px) {
+  :root {
+    --content-x: 10px;
+    --screen-gap: 10px;
+    --card-pad: 12px;
+    --nav-plus-size: 50px;
+    --nav-height: 68px;
+  }
+
   .phone-shell .hero-copy {
     width: 68%;
   }
@@ -821,8 +938,72 @@ button {
   }
 
   .phone-shell .bottom-nav button[aria-label="快速记录"] span {
-    width: 50px !important;
-    height: 50px !important;
+    width: var(--nav-plus-size) !important;
+    height: var(--nav-plus-size) !important;
+  }
+}
+
+html[data-app-compact="true"] {
+  --content-x: 10px;
+  --screen-gap: 9px;
+  --card-pad: 11px;
+  --nav-plus-size: 50px;
+  --nav-height: 68px;
+}
+
+html[data-app-compact="true"] .phone-shell .glass-card {
+  border-radius: 18px !important;
+}
+
+html[data-app-compact="true"] .phone-shell .hero-card {
+  min-height: clamp(172px, 49vw, 196px) !important;
+}
+
+html[data-app-compact="true"] .companion-chat-panel .chat-thread {
+  max-height: clamp(142px, 27dvh, 190px);
+}
+
+@media (max-width: 430px) and (max-height: 720px) {
+  :root {
+    --screen-gap: 8px;
+    --card-pad: 10px;
+    --nav-height: 66px;
+    --nav-plus-size: 48px;
+  }
+
+  .phone-shell .hero-card,
+  .phone-shell [class*="min-h-[286px]"],
+  .phone-shell [class*="min-h-[280px]"],
+  .phone-shell [class*="min-h-[272px]"],
+  .phone-shell [class*="min-h-[258px]"],
+  .phone-shell [class*="min-h-[236px]"] {
+    min-height: clamp(146px, 43vw, 168px) !important;
+  }
+
+  .phone-shell .icon-btn {
+    width: 32px;
+    height: 32px;
+  }
+
+  .phone-shell .status-grid [class*="h-10"][class*="w-10"],
+  .phone-shell .status-grid [class*="h-12"][class*="w-12"] {
+    width: 30px !important;
+    height: 30px !important;
+  }
+
+  .phone-shell .media-card .media-copy {
+    width: min(70%, 220px);
+  }
+
+  .phone-shell .media-card p.media-copy {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .phone-shell .companion-chat-panel .chat-thread {
+    max-height: clamp(108px, 21dvh, 145px);
   }
 }
 
