@@ -3,6 +3,8 @@
 :root {
   --background: #08123c;
   --foreground: #ffffff;
+  --app-vvw: 100vw;
+  --app-vvh: 100dvh;
 }
 
 *,
@@ -13,15 +15,17 @@
 
 html {
   width: 100%;
+  max-width: 100%;
   min-width: 0;
   overflow-x: hidden;
-  -webkit-text-size-adjust: 100%;
-  text-size-adjust: 100%;
+  -webkit-text-size-adjust: none;
+  text-size-adjust: none;
 }
 
 body {
   margin: 0;
   width: 100%;
+  max-width: 100%;
   min-width: 0;
   overflow-x: hidden;
   background: var(--background);
@@ -188,8 +192,8 @@ body {
 
 .phone-shell {
   background: var(--theme-shell);
-  width: min(100%, 430px);
-  max-width: 100%;
+  width: min(100%, var(--app-vvw), 430px);
+  max-width: min(100%, var(--app-vvw), 430px);
   min-width: 0;
 }
 
@@ -199,7 +203,8 @@ button {
 
 .app-frame {
   min-height: 100vh;
-  width: 100%;
+  width: min(100%, var(--app-vvw));
+  max-width: min(100%, var(--app-vvw));
   min-width: 0;
   overflow-x: clip;
 }
@@ -280,6 +285,7 @@ button {
 }
 
 .content-scroll {
+  max-width: min(100%, var(--app-vvw));
   overflow-x: clip;
 }
 
@@ -355,7 +361,13 @@ button {
 .bottom-nav-wrap,
 .bottom-nav,
 .bottom-nav button {
+  max-width: 100%;
   min-width: 0;
+}
+
+.bottom-nav-wrap {
+  width: min(100%, var(--app-vvw), 430px);
+  margin-inline: auto;
 }
 
 .hero-photo-card {
@@ -659,8 +671,8 @@ button {
 
 @media (max-width: 430px) {
   .phone-shell {
-    width: 100dvw;
-    max-width: 100dvw;
+    width: min(100dvw, var(--app-vvw));
+    max-width: min(100dvw, var(--app-vvw));
   }
 
   .phone-shell .no-scrollbar {
@@ -686,19 +698,19 @@ button {
     min-height: clamp(188px, 52vw, 214px) !important;
   }
 
-  .phone-shell [class*="text-[42px]"] { font-size: 31px !important; }
-  .phone-shell [class*="text-[38px]"] { font-size: 29px !important; }
-  .phone-shell [class*="text-[34px]"] { font-size: 27px !important; }
-  .phone-shell [class*="text-[32px]"] { font-size: 25px !important; }
-  .phone-shell [class*="text-[28px]"] { font-size: 23px !important; }
-  .phone-shell [class*="text-[27px]"] { font-size: 22px !important; }
-  .phone-shell [class*="text-[26px]"] { font-size: 22px !important; }
-  .phone-shell [class*="text-[25px]"] { font-size: 21px !important; }
-  .phone-shell [class*="text-[24px]"] { font-size: 20px !important; }
-  .phone-shell [class*="text-[23px]"] { font-size: 20px !important; }
-  .phone-shell [class*="text-[22px]"] { font-size: 19px !important; }
-  .phone-shell [class*="text-[20px]"] { font-size: 18px !important; }
-  .phone-shell [class*="text-[18px]"] { font-size: 16px !important; }
+  .phone-shell [class*="text-[42px]"] { font-size: clamp(27px, 7vw, 30px) !important; }
+  .phone-shell [class*="text-[38px]"] { font-size: clamp(25px, 6.7vw, 28px) !important; }
+  .phone-shell [class*="text-[34px]"] { font-size: clamp(24px, 6.4vw, 27px) !important; }
+  .phone-shell [class*="text-[32px]"] { font-size: clamp(23px, 6.1vw, 25px) !important; }
+  .phone-shell [class*="text-[28px]"] { font-size: clamp(21px, 5.5vw, 23px) !important; }
+  .phone-shell [class*="text-[27px]"] { font-size: clamp(20px, 5.4vw, 22px) !important; }
+  .phone-shell [class*="text-[26px]"] { font-size: clamp(20px, 5.3vw, 22px) !important; }
+  .phone-shell [class*="text-[25px]"] { font-size: clamp(19px, 5.2vw, 21px) !important; }
+  .phone-shell [class*="text-[24px]"] { font-size: clamp(18px, 5vw, 20px) !important; }
+  .phone-shell [class*="text-[23px]"] { font-size: clamp(18px, 4.9vw, 20px) !important; }
+  .phone-shell [class*="text-[22px]"] { font-size: clamp(17px, 4.8vw, 19px) !important; }
+  .phone-shell [class*="text-[20px]"] { font-size: clamp(16px, 4.5vw, 18px) !important; }
+  .phone-shell [class*="text-[18px]"] { font-size: clamp(15px, 4vw, 16px) !important; }
 
   .phone-shell .primary-btn,
   .phone-shell .ghost-btn,

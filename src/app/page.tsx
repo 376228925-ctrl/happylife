@@ -256,6 +256,30 @@ export default function Page() {
   const toastTimerRef = useRef<number | null>(null);
   const reminderTimerRef = useRef<number | null>(null);
 
+  useEffect(() => {
+    const root = document.documentElement;
+    const syncViewport = () => {
+      const viewport = window.visualViewport;
+      const width = Math.floor(viewport?.width || window.innerWidth || root.clientWidth);
+      const height = Math.floor(viewport?.height || window.innerHeight || root.clientHeight);
+      root.style.setProperty("--app-vvw", `${width}px`);
+      root.style.setProperty("--app-vvh", `${height}px`);
+    };
+
+    syncViewport();
+    window.addEventListener("resize", syncViewport);
+    window.visualViewport?.addEventListener("resize", syncViewport);
+    window.visualViewport?.addEventListener("scroll", syncViewport);
+
+    return () => {
+      window.removeEventListener("resize", syncViewport);
+      window.visualViewport?.removeEventListener("resize", syncViewport);
+      window.visualViewport?.removeEventListener("scroll", syncViewport);
+      root.style.removeProperty("--app-vvw");
+      root.style.removeProperty("--app-vvh");
+    };
+  }, []);
+
   const showToast = useCallback((message: string) => {
     setToast(message);
     if (toastTimerRef.current) {
@@ -3069,7 +3093,7 @@ function MyScreen({
           <SummaryCell label="健康币" value="1,230" />
           <SummaryCell label="幸福值" value="9,888" />
         </div>
-        <div className="pointer-events-none absolute right-0 bottom-0 h-16 w-16 translate-x-1/4 translate-y-1/4 rounded-full border border-white/18 bg-[radial-gradient(circle,#ffd89f_8%,#d4a2ff_52%,#8765ff_100%)] opacity-35 shadow-[0_0_32px_rgba(204,154,255,.45)]" />
+        <div className="pointer-events-none absolute right-0 bottom-0 h-16 w-16 translate-y-1/4 rounded-full border border-white/18 bg-[radial-gradient(circle,#ffd89f_8%,#d4a2ff_52%,#8765ff_100%)] opacity-35 shadow-[0_0_32px_rgba(204,154,255,.45)]" />
       </GlassCard>
 
       {menus.map((item) => (
